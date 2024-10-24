@@ -1,4 +1,4 @@
-# CUDA-to-Metal MPS Translation Project
+# CUDA-to-Metal MPS Translation Project (ONLY FOR MAC M1 CARDS, FOR THE MOMENT!)
 
 ![CUDAM Logo](assets/cudam_logo.png)
 
