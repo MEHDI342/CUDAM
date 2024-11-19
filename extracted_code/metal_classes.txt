@@ -1,0 +1,283 @@
+Metal Classes and Structures
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\native\metal_interop.h
+class MetalKernelExecutor: MetalKernelExecutable {
+    private let device: MTLDevice
+    private let commandQueue: MTLCommandQueue
+    private let pipelineCache: NSCache<NSString, MTLComputePipelineState>
+    private let resourceSemaphore: DispatchSemaphore
+    private let executionQueue: DispatchQueue
+
+    public init() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw MetalError.deviceNotFound
+        }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\native\metal_interop.h
+class MetalResourceManager {
+    private let device: MTLDevice
+    private var bufferCache: [String: WeakBuffer] = [:]
+    private let queue = DispatchQueue(label: "com.metal.resourcemanager")
+    private let maxBufferSize: Int
+
+    private class WeakBuffer {
+        weak var buffer: MTLBuffer?
+        let creationTime: Date
+
+        init(_ buffer: MTLBuffer) {
+            self.buffer = buffer
+            self.creationTime = Date()
+        }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+namespace metal;
+
+// CUDA-style vector types
+struct int2 { int x, y; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct int3 { int x, y, z; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct int4 { int x, y, z, w; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct uint2 { uint x, y; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct uint3 { uint x, y, z; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct uint4 { uint x, y, z, w; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct float2 { float x, y; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct float3 { float x, y, z; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+struct float4 { float x, y, z, w; }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\header_template.h
+structure
+struct KernelParameters {
+    uint problemSize;
+    uint batchSize;
+    float learningRate;
+    float4 reserved;  // For alignment
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+namespace metal;
+
+// Utility functions for thread/block mapping
+namespace cuda {
+    // Thread indexing
+    struct uint3 {
+        uint x, y, z;
+    }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+struct float3 {
+        float x, y, z;
+    }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+struct for shared state
+struct KernelState {
+    uint3 thread_idx;
+    uint3 block_idx;
+    uint3 block_dim;
+    uint3 grid_dim;
+    uint simd_lane_id;
+    uint simd_group_id;
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+struct
+struct KernelParams {
+    uint problem_size;
+    uint batch_size;
+    float learning_rate;
+    // Add other common parameters
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+kernel void example_kernel(
+    device float* input [[buffer(0)]],
+    device float* output [[buffer(1)]],
+    constant KernelParams& params [[buffer(2)]],
+    uint3 thread_position_in_threadgroup [[thread_position_in_threadgroup]],
+    uint3 threadgroup_position_in_grid [[threadgroup_position_in_grid]],
+    uint3 threads_per_threadgroup [[threads_per_threadgroup]],
+    uint3 threadgroups_per_grid [[threadgroups_per_grid]]
+) {
+    // Initialize kernel state
+    KernelState state = init_kernel_state(
+        thread_position_in_threadgroup,
+        threadgroup_position_in_grid,
+        threads_per_threadgroup,
+        threadgroups_per_grid
+    );
+
+    // Example shared memory
+    threadgroup float shared_data[1024];
+
+    // Example CUDA-style indexing
+    uint idx = (state.block_idx.x * state.block_dim.x) + state.thread_idx.x;
+    if (idx >= params.problem_size) return;
+
+    // Example computation with shared memory
+    shared_data[state.thread_idx.x] = input[idx];
+    cuda::__syncthreads();
+
+    output[idx] = shared_data[state.thread_idx.x] * params.learning_rate;
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+namespace cublas {
+    // Matrix multiply
+    METAL_FUNC void gemm(
+        device const float* A,
+        device const float* B,
+        device float* C,
+        uint M, uint N, uint K,
+        threadgroup float* shared_mem [[threadgroup(0)]]
+    ) {
+        constexpr uint TILE_SIZE = 16;
+        uint2 tid = uint2(threadIdx_x, threadIdx_y);
+        uint2 bid = uint2(blockIdx_x, blockIdx_y);
+
+        // Tile start positions
+        uint row = bid.y * TILE_SIZE + tid.y;
+        uint col = bid.x * TILE_SIZE + tid.x;
+
+        // Accumulator for dot product
+        float acc = 0.0f;
+
+        // Loop over tiles
+        for (uint t = 0; t < K; t += TILE_SIZE) {
+            // Load tile into shared memory
+            threadgroup float* tile_A = shared_mem;
+            threadgroup float* tile_B = shared_mem + TILE_SIZE * TILE_SIZE;
+
+            if (row < M && (t + tid.x) < K)
+                tile_A[tid.y * TILE_SIZE + tid.x] = A[row * K + t + tid.x];
+            if (col < N && (t + tid.y) < K)
+                tile_B[tid.y * TILE_SIZE + tid.x] = B[(t + tid.y) * N + col];
+
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+
+            // Compute partial dot product
+            for (uint k = 0; k < TILE_SIZE; k++) {
+                acc += tile_A[tid.y * TILE_SIZE + k] *
+                       tile_B[k * TILE_SIZE + tid.x];
+            }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+namespace cudnn {
+    // ReLU activation
+    METAL_FUNC void relu(
+        device const float* input,
+        device float* output,
+        uint size
+    ) {
+        uint idx = (blockIdx_x * blockDim_x) + threadIdx_x;
+        if (idx < size)
+            output[idx] = max(0.0f, input[idx]);
+    }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+namespace cuda_utils {
+    // Coalesced memory copy
+    METAL_FUNC void coalesced_copy(
+        device const float* src,
+        device float* dst,
+        uint size
+    ) {
+        uint idx = (blockIdx_x * blockDim_x) + threadIdx_x;
+        if (idx >= size) return;
+
+        // Vector load/store when possible
+        if ((idx + 3) < size && (idx % 4) == 0) {
+            float4 vec = *reinterpret_cast<device const float4*>(&src[idx]);
+            *reinterpret_cast<device float4*>(&dst[idx]) = vec;
+        }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\metal\kernel_template.metal
+namespace cuda_warp {
+    // Warp reduce sum
+    METAL_FUNC float warp_reduce_sum(float val) {
+        const uint lane_id = get_lane_id();
+
+        // Butterfly reduction
+        for (uint offset = METAL_WARP_SIZE/2; offset > 0; offset >>= 1)
+            val += simd_shuffle_xor(val, offset);
+
+        return val;
+    }
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\msl\device_functions.metal
+namespace metal;
+
+// Helper function that can be used by kernels
+float compute_something(float value) {
+    return value * 2.0;
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\msl\kernel_template.metal
+namespace metal;
+
+kernel void example_kernel(const device float* input [[buffer(0)]],
+                           device float* output [[buffer(1)]],
+                           uint id [[thread_position_in_grid]]) {
+    output[id] = compute_something(input[id]);
+}
+================================================================================

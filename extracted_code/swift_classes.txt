@@ -1,7 +1,29 @@
-import Metal
-import MetalKit
+Swift Classes and Extensions
+================================================================================
 
-// CUDA-like host wrapper for Metal GPU kernels
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\cudnn_wrapper.swift
+class CUDNNWrapper {
+    private let device: MTLDevice
+    private var convolution: MPSCNNConvolution
+
+    init(device: MTLDevice) {
+        self.device = device
+
+        let convDesc = MPSCNNConvolutionDescriptor(kernelWidth: 3, kernelHeight: 3,
+                                                   inputFeatureChannels: 1, outputFeatureChannels: 1)
+
+        convolution = MPSCNNConvolution(device: device, convolutionDescriptor: convDesc, kernelWeights: [], biasTerms: nil)
+    }
+
+    func performConvolution(input: MPSImage, output: MPSImage, commandBuffer: MTLCommandBuffer) {
+        convolution.encode(commandBuffer: commandBuffer, sourceImage: input, destinationImage: output)
+    }
+}
+================================================================================
+
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\kernel_wrapper.swift
 class CUDAMetalDevice {
     // Metal objects
     private let device: MTLDevice
@@ -153,8 +175,11 @@ class CUDAMetalDevice {
         case deviceToDevice
     }
 }
+================================================================================
 
-// Example usage extension
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\kernel_wrapper.swift
+extension
 extension CUDAMetalDevice {
     func createBuffer<T>(_ data: [T]) throws -> MTLBuffer {
         let size = MemoryLayout<T>.stride * data.count
@@ -222,8 +247,10 @@ extension CUDAMetalDevice {
         commandBuffer?.commit()
     }
 }
+================================================================================
 
-// Advanced Kernel Management
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\kernel_wrapper.swift
 extension CUDAMetalDevice {
     // Dynamic Shared Memory
     func setDynamicSharedMemorySize(_ size: Int, for kernelName: String) throws {
@@ -322,17 +349,81 @@ extension CUDAMetalDevice {
         return profile
     }
 }
+================================================================================
 
-struct KernelProfile {
-    var executionTime: Double = 0
-    var threadgroups: Int = 0
-    var threadsPerThreadgroup: Int = 0
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\main.swift
+class MetalApp {
+    private let device: MTLDevice
+    private let metalManager: MetalManager
+
+    init() {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("Metal is not supported on this device.")
+        }
+        self.device = device
+        self.metalManager = MetalManager(device: device)
+    }
+
+    func run() {
+        // Input and output buffers setup
+        let inputBuffer = device.makeBuffer(length: MemoryLayout<Float>.size * 256, options: [])
+        let outputBuffer = device.makeBuffer(length: MemoryLayout<Float>.size * 256, options: [])
+
+        // Fill the input buffer with data
+        let inputPointer = inputBuffer?.contents().bindMemory(to: Float.self, capacity: 256)
+        for i in 0..<256 {
+            inputPointer?[i] = Float(i)
+        }
+
+        // Execute kernel
+        metalManager.executeKernel(functionName: "example_kernel", inputBuffer: inputBuffer!, outputBuffer: outputBuffer!)
+    }
 }
+================================================================================
 
-enum MemoryLocation {
-    case device
-    case host
+
+// Source: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\templates\swift\metal_manager.swift
+class MetalManager {
+    private let device: MTLDevice
+    private let commandQueue: MTLCommandQueue
+
+    init(device: MTLDevice) {
+        self.device = device
+        self.commandQueue = device.makeCommandQueue()!
+    }
+
+    func executeKernel(functionName: String, inputBuffer: MTLBuffer, outputBuffer: MTLBuffer) {
+        guard let library = device.makeDefaultLibrary(),
+              let function = library.makeFunction(name: functionName) else {
+            print("Failed to find the function \(functionName)")
+            return
+        }
+
+        do {
+            let pipelineState = try device.makeComputePipelineState(function: function)
+            guard let commandBuffer = commandQueue.makeCommandBuffer(),
+                  let commandEncoder = commandBuffer.makeComputeCommandEncoder() else {
+                print("Failed to create command encoder")
+                return
+            }
+
+            commandEncoder.setComputePipelineState(pipelineState)
+            commandEncoder.setBuffer(inputBuffer, offset: 0, index: 0)
+            commandEncoder.setBuffer(outputBuffer, offset: 0, index: 1)
+
+            let gridSize = MTLSize(width: 256, height: 1, depth: 1)
+            let threadGroupSize = MTLSize(width: 16, height: 1, depth: 1)
+            commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadGroupSize)
+
+            commandEncoder.endEncoding()
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
+
+            print("Kernel execution completed")
+        } catch {
+            print("Error creating pipeline state: \(error)")
+        }
+    }
 }
-
-
-}
+================================================================================

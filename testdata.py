@@ -4,7 +4,7 @@ import re
 def generate_project_structure(directory, indent_level=0):
     structure = ""
     for root, dirs, files in os.walk(directory):
-        if 'venv' in root:
+        if any(ignored in root for ignored in ['venv', '.git', 'node_modules','public']):
             continue
 
         level = root.replace(directory, '').count(os.sep)
@@ -12,38 +12,37 @@ def generate_project_structure(directory, indent_level=0):
         structure += f"{indent}├── {os.path.basename(root)}/\n"
         sub_indent = '│   ' * (level + 1 - indent_level)
         for file in files:
-            if file.endswith('.py'):
-                structure += f"{sub_indent}├── {file}\n"
-        dirs[:] = [d for d in dirs if d != 'venv']  # Skip venv directory
+            structure += f"{sub_indent}├── {file}\n"
+        dirs[:] = [d for d in dirs if d not in ['venv', '.git', 'node_modules','public']]  # Skip these directories
 
     return structure
 
 def extract_classes_and_methods(content):
     class_regex = r'class\s+(\w+)\s*(\(.*?\))?:'
-    method_regex = r'def\s+(\w+)\s*\(.*?\):'
+    frontend_method_regex = r'(?:render_template|get|post|route)\s*\(.*?\)'  # Matches common Flask or Django view methods
 
     extracted_content = ""
     class_matches = re.findall(class_regex, content)
 
     for class_match in class_matches:
-        class_name = class_match[0]
+        class_name = class_match
         extracted_content += f"\nClass: {class_name}\n"
         extracted_content += "-" * 80 + "\n"
 
-        method_matches = re.findall(method_regex, content)
+        method_matches = re.findall(frontend_method_regex, content)
         for method_match in method_matches:
             extracted_content += f"  Method: {method_match}\n"
 
     return extracted_content
 
-def read_files_recursively(directory):
+def read_frontend_files(directory):
     content = ""
     for root, dirs, files in os.walk(directory):
-        if 'venv' in root:
+        if any(ignored in root for ignored in ['venv', '.git', 'node_modules','public','build']):
             continue
 
         for file in files:
-            if file.endswith('.py'):
+            if file.endswith(('.metal', '.h', '.m', '.swift', '.py', '.cu', '.cuh')):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 content += f"File: {file_path}\n\n"
@@ -52,8 +51,10 @@ def read_files_recursively(directory):
                         file_content = f.read()
                         content += file_content
 
-                        extracted_classes_methods = extract_classes_and_methods(file_content)
-                        content += extracted_classes_methods
+                        # Extract classes and methods if it's a Python file for frontend views
+                        if file.endswith(('.metal', '.h', '.m', '.swift', '.py', '.cu', '.cuh')):
+                            extracted_classes_methods = extract_classes_and_methods(file_content)
+                            content += extracted_classes_methods
 
                 except UnicodeDecodeError:
                     try:
@@ -63,22 +64,24 @@ def read_files_recursively(directory):
                     except Exception as e:
                         content += f"Error reading file: {e}"
                 content += "\n\n" + "-"*80 + "\n\n"
+        dirs[:] = [d for d in dirs if d not in ['venv', '.git', 'node_modules','public','build']]  # Skip these directories
     return content
 
 def save_content_to_txt(directory, output_file):
     print("Starting the process...")
     project_structure = generate_project_structure(directory)
-    file_content = read_files_recursively(directory)
+    frontend_content = read_frontend_files(directory)
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("Project Structure:\n\n")
         f.write(project_structure)
         f.write("\n\n" + "="*80 + "\n\n")
-        f.write(file_content)
+        f.write("Frontend File Contents:\n\n")
+        f.write(frontend_content)
     print("Process completed successfully.")
 
 # Usage
 project_directory = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM"
-output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\projett_content.txt"
+output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\backend_content.txt"
 
 try:
     save_content_to_txt(project_directory, output_file)
