@@ -164,4 +164,175 @@ extension CUDAMetalDevice {
         memcpy(buffer.contents(), data, size)
         return buffer
     }
+// Advanced Memory Management
+extension CUDAMetalDevice {
+    // 2D Memory Allocation
+    func cudaMallocPitch<T>(width: Int, height: Int) throws -> (UnsafeMutablePointer<T>, Int) {
+        let pitch = (width * MemoryLayout<T>.stride + 255) & ~255 // 256-byte alignment
+        let size = pitch * height
+
+        guard let buffer = device.makeBuffer(length: size, options: .storageModeShared) else {
+            throw CUDAError.outOfMemory
+        }
+
+        let pointer = buffer.contents().assumingMemoryBound(to: T.self)
+        allocatedBuffers[pointer] = buffer
+
+        return (pointer, pitch)
+    }
+
+    // Array Memory Management
+    func cudaMallocArray<T>(_ shape: [Int]) throws -> UnsafeMutablePointer<T> {
+        let size = shape.reduce(1, *) * MemoryLayout<T>.stride
+        return try cudaMalloc(size)
+    }
+
+    // Managed Memory
+    func cudaMallocManaged<T>(_ size: Int) throws -> UnsafeMutablePointer<T> {
+        guard let buffer = device.makeBuffer(length: size,
+                                           options: [.storageModeShared, .hazardTrackingModeTracked]) else {
+            throw CUDAError.outOfMemory
+        }
+
+        let pointer = buffer.contents().assumingMemoryBound(to: T.self)
+        allocatedBuffers[pointer] = buffer
+
+        return pointer
+    }
+
+    // Memory Prefetch
+    func cudaMemPrefetchAsync<T>(_ pointer: UnsafeMutablePointer<T>,
+                                count: Int,
+                                location: MemoryLocation) throws {
+        guard let buffer = allocatedBuffers[pointer] else {
+            throw CUDAError.invalidValue
+        }
+
+        let commandBuffer = commandQueue.makeCommandBuffer()
+        let blitEncoder = commandBuffer?.makeBlitCommandEncoder()
+
+        switch location {
+        case .device:
+            blitEncoder?.synchronize(resource: buffer)
+        case .host:
+            buffer.didModifyRange(0..<buffer.length)
+        }
+
+        blitEncoder?.endEncoding()
+        commandBuffer?.commit()
+    }
+}
+
+// Advanced Kernel Management
+extension CUDAMetalDevice {
+    // Dynamic Shared Memory
+    func setDynamicSharedMemorySize(_ size: Int, for kernelName: String) throws {
+        guard let pipelineState = kernelPipelineStates[kernelName] else {
+            throw CUDAError.kernelNotFound
+        }
+
+        guard size <= pipelineState.maxTotalThreadsPerThreadgroup else {
+            throw CUDAError.invalidValue
+        }
+
+        // Store for kernel launch
+        kernelSharedMemorySizes[kernelName] = size
+    }
+
+    // Multiple Kernel Launch
+    func launchKernels(_ launches: [(name: String,
+                                   gridSize: (Int, Int, Int),
+                                   blockSize: (Int, Int, Int),
+                                   arguments: [MTLBuffer])]) throws {
+        let commandBuffer = commandQueue.makeCommandBuffer()
+
+        for launch in launches {
+            guard let pipelineState = kernelPipelineStates[launch.name] else {
+                throw CUDAError.kernelNotFound
+            }
+
+            let computeEncoder = commandBuffer?.makeComputeCommandEncoder()
+            computeEncoder?.setComputePipelineState(pipelineState)
+
+            // Set arguments
+            for (index, buffer) in launch.arguments.enumerated() {
+                computeEncoder?.setBuffer(buffer, offset: 0, index: index)
+            }
+
+            let threadsPerGrid = MTLSize(width: launch.gridSize.0,
+                                       height: launch.gridSize.1,
+                                       depth: launch.gridSize.2)
+
+            let threadsPerThreadgroup = MTLSize(width: launch.blockSize.0,
+                                              height: launch.blockSize.1,
+                                              depth: launch.blockSize.2)
+
+            computeEncoder?.dispatchThreadgroups(threadsPerGrid,
+                                             threadsPerThreadgroup: threadsPerThreadgroup)
+
+            computeEncoder?.endEncoding()
+        }
+
+        commandBuffer?.commit()
+    }
+
+    // Kernel Profiling
+    func profileKernel(name: String,
+                      gridSize: (Int, Int, Int),
+                      blockSize: (Int, Int, Int),
+                      arguments: [MTLBuffer]) throws -> KernelProfile {
+        guard let pipelineState = kernelPipelineStates[name] else {
+            throw CUDAError.kernelNotFound
+        }
+
+        let commandBuffer = commandQueue.makeCommandBuffer()
+
+        let computeEncoder = commandBuffer?.makeComputeCommandEncoder()
+        computeEncoder?.setComputePipelineState(pipelineState)
+
+        // Set arguments
+        for (index, buffer) in arguments.enumerated() {
+            computeEncoder?.setBuffer(buffer, offset: 0, index: index)
+        }
+
+        let threadsPerGrid = MTLSize(width: gridSize.0,
+                                   height: gridSize.1,
+                                   depth: gridSize.2)
+
+        let threadsPerThreadgroup = MTLSize(width: blockSize.0,
+                                          height: blockSize.1,
+                                          depth: blockSize.2)
+
+        computeEncoder?.dispatchThreadgroups(threadsPerGrid,
+                                         threadsPerThreadgroup: threadsPerThreadgroup)
+
+        computeEncoder?.endEncoding()
+
+        var profile = KernelProfile()
+
+        commandBuffer?.addCompletedHandler { buffer in
+            profile.executionTime = buffer.gpuEndTime - buffer.gpuStartTime
+            profile.threadgroups = gridSize.0 * gridSize.1 * gridSize.2
+            profile.threadsPerThreadgroup = blockSize.0 * blockSize.1 * blockSize.2
+        }
+
+        commandBuffer?.commit()
+        commandBuffer?.waitUntilCompleted()
+
+        return profile
+    }
+}
+
+struct KernelProfile {
+    var executionTime: Double = 0
+    var threadgroups: Int = 0
+    var threadsPerThreadgroup: Int = 0
+}
+
+enum MemoryLocation {
+    case device
+    case host
+}
+
+
 }
