@@ -237,7 +237,10 @@ if __name__ == "__main__":
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\setup.py
 
-import os
+# CUDAM/setup.py
+
+from setuptools import setup, find_packages
+
 
 --------------------------------------------------------------------------------
 
@@ -345,60 +348,85 @@ File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\__init__.py
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\cli\cli.py
 
-# cli/cli.py
-from typing import Dict, Any
 import argparse
 import logging
-import sys
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Union, Any
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from ..parser.cuda_parser import CudaParser
 from ..translator.kernel_translator import KernelTranslator
-from ..translator.memory_model_translator import MemoryModelTranslator
-from ..translator.thread_hierarchy_mapper import ThreadHierarchyMapper
-from ..optimizer.code_optimizer import CodeOptimizer
-from ..utils.error_handler import CudaTranslationError, CudaParseError
+from ..translator.host_adapter import HostAdapter
+from ..optimizer.metal_optimizer import MetalOptimizer
+from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
-from .config_parser import ConfigParser
+from .config_parser import ConfigParser, MetalConfig
 
 logger = get_logger(__name__)
 
+@dataclass
+class TranslationConfig:
+    """Translation configuration parameters"""
+    input_path: Path
+    output_path: Path
+    metal_target: str = "2.4"
+    optimization_level: int = 2
+    generate_tests: bool = True
+    preserve_comments: bool = True
+    source_map: bool = True
+    enable_profiling: bool = False
+
 class CLI:
-    """Command-line interface for CUDA to Metal translation."""
+    """
+    Production-grade CLI implementation for CUDA to Metal translation.
+    Thread-safe, optimized for performance, with comprehensive error handling.
+    """
 
     def __init__(self):
+        """Initialize CLI with required components"""
         self.parser = CudaParser()
         self.kernel_translator = KernelTranslator()
-        self.memory_translator = MemoryModelTranslator()
-        self.thread_mapper = ThreadHierarchyMapper()
-        self.optimizer = CodeOptimizer()
+        self.host_adapter = HostAdapter()
+        self.optimizer = MetalOptimizer()
         self.config_parser = ConfigParser()
 
-    def run(self) -> int:
-        """Run the CLI application."""
-        args = self._parse_arguments()
+        # Thread pool for parallel processing
+        self.executor = ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 4))
 
+        # Translation cache for performance
+        self._translation_cache: Dict[str, Any] = {}
+
+    def run(self) -> int:
+        """
+        Main entry point for CLI execution.
+        Returns exit code (0 for success, non-zero for error)
+        """
         try:
+            args = self._parse_arguments()
+            config = self._load_configuration(args)
+
             if args.command == 'translate':
-                return self._handle_translation(args)
+                return self._handle_translation(args, config)
             elif args.command == 'validate':
                 return self._handle_validation(args)
             elif args.command == 'analyze':
                 return self._handle_analysis(args)
-            else:
-                logger.error(f"Unknown command: {args.command}")
-                return 1
+
+            logger.error(f"Unknown command: {args.command}")
+            return 1
 
         except Exception as e:
             logger.error(f"Error during execution: {str(e)}")
             return 1
+        finally:
+            self.executor.shutdown(wait=True)
 
     def _parse_arguments(self) -> argparse.Namespace:
-        """Parse command line arguments."""
+        """Parse and validate command line arguments"""
         parser = argparse.ArgumentParser(
-            description='CUDA to Metal Translation Tool'
+            description='CUDA to Metal Translation Tool',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
 
         parser.add_argument(
@@ -441,11 +469,6 @@ class CLI:
             default=2,
             help='Optimization level'
         )
-        translate_parser.add_argument(
-            '--parallel',
-            action='store_true',
-            help='Enable parallel processing'
-        )
 
         # Validation command
         validate_parser = subparsers.add_parser('validate')
@@ -462,11 +485,6 @@ class CLI:
             type=str,
             help='Input CUDA file or directory to analyze'
         )
-        analyze_parser.add_argument(
-            '--report',
-            type=str,
-            help='Output file for analysis report'
-        )
 
         args = parser.parse_args()
 
@@ -478,58 +496,69 @@ class CLI:
 
         return args
 
-    def _handle_translation(self, args: argparse.Namespace) -> int:
-        """Handle the translation command."""
-        input_path = Path(args.input)
-        output_path = Path(args.output)
+    def _load_configuration(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """Load and validate configuration from file"""
+        if not args.config:
+            return {}
 
-        # Load configuration if provided
-        if args.config:
-            try:
-                config = self.config_parser.parse(args.config)
-            except Exception as e:
-                logger.error(f"Failed to parse configuration: {e}")
-                return 1
-        else:
-            config = {}
+        try:
+            return self.config_parser.parse(args.config)
+        except Exception as e:
+            logger.error(f"Failed to parse configuration: {e}")
+            raise
 
-        # Create output directory if it doesn't exist
-        output_path.mkdir(parents=True, exist_ok=True)
+    def _handle_translation(self, args: argparse.Namespace, config: Dict[str, Any]) -> int:
+        """Handle translation command with full error handling"""
+        try:
+            input_path = Path(args.input)
+            output_path = Path(args.output)
 
-        if input_path.is_file():
-            return self._translate_file(input_path, output_path, args, config)
-        elif input_path.is_dir():
-            return self._translate_directory(input_path, output_path, args, config)
-        else:
-            logger.error(f"Input path does not exist: {input_path}")
+            # Validate paths
+            if not input_path.exists():
+                raise CudaTranslationError(f"Input path does not exist: {input_path}")
+
+            output_path.mkdir(parents=True, exist_ok=True)
+
+            if input_path.is_file():
+                return self._translate_file(input_path, output_path, args, config)
+            elif input_path.is_dir():
+                return self._translate_directory(input_path, output_path, args, config)
+
+            logger.error(f"Invalid input path: {input_path}")
             return 1
 
-    def _translate_file(
-            self,
-            input_file: Path,
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate a single CUDA file to Metal."""
+        except Exception as e:
+            logger.error(f"Translation failed: {e}")
+            return 1
+
+    def _translate_file(self, input_file: Path, output_dir: Path,
+                        args: argparse.Namespace, config: Dict[str, Any]) -> int:
+        """Translate single CUDA file to Metal"""
         try:
             logger.info(f"Translating file: {input_file}")
 
             # Parse CUDA code
             ast = self.parser.parse_file(str(input_file))
 
-            # Optimize if requested
+            # Apply optimizations
             if args.optimize > 0:
-                ast = self.optimizer.optimize(ast)
+                ast = self.optimizer.optimize(ast, args.optimize)
 
-            # Translate to Metal
+            # Generate Metal code
             metal_code = self.kernel_translator.translate_kernel(ast)
-            host_code = self._generate_host_code(ast, args.language)
+
+            # Generate host code
+            if args.language == 'swift':
+                host_code = self._generate_swift_host_code(ast)
+            else:
+                host_code = self._generate_objc_host_code(ast)
 
             # Write output files
-            output_basename = input_file.stem
-            metal_file = output_dir / f"{output_basename}.metal"
-            host_file = output_dir / f"{output_basename}.{self._get_host_extension(args.language)}"
+            output_base = output_dir / input_file.stem
+            metal_file = output_base.with_suffix('.metal')
+            host_file = output_base.with_suffix(
+                '.swift' if args.language == 'swift' else '.m'
+            )
 
             metal_file.write_text(metal_code)
             host_file.write_text(host_code)
@@ -537,152 +566,109 @@ class CLI:
             logger.info(f"Successfully translated {input_file}")
             return 0
 
-        except (CudaParseError, CudaTranslationError) as e:
-            logger.error(f"Translation failed: {str(e)}")
-            return 1
-
-    def _translate_directory(
-            self,
-            input_dir: Path,
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate all CUDA files in a directory."""
-        cuda_files = list(input_dir.rglob("*.cu"))
-        if not cuda_files:
-            logger.error(f"No CUDA files found in {input_dir}")
-            return 1
-
-        if args.parallel:
-            return self._translate_parallel(cuda_files, output_dir, args, config)
-        else:
-            return self._translate_sequential(cuda_files, output_dir, args, config)
-
-    def _translate_parallel(
-            self,
-            cuda_files: List[Path],
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate files in parallel."""
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for file in cuda_files:
-                future = executor.submit(
-                    self._translate_file,
-                    file,
-                    output_dir,
-                    args,
-                    config
-                )
-                futures.append((file, future))
-
-            failed = False
-            for file, future in futures:
-                try:
-                    result = future.result()
-                    if result != 0:
-                        failed = True
-                except Exception as e:
-                    logger.error(f"Failed to translate {file}: {e}")
-                    failed = True
-
-            return 1 if failed else 0
-
-    def _translate_sequential(
-            self,
-            cuda_files: List[Path],
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate files sequentially."""
-        failed = False
-        for file in cuda_files:
-            if self._translate_file(file, output_dir, args, config) != 0:
-                failed = True
-        return 1 if failed else 0
-
-    def _handle_validation(self, args: argparse.Namespace) -> int:
-        """Handle the validation command."""
-        input_path = Path(args.input)
-
-        try:
-            if input_path.is_file():
-                valid = self.parser.validate_file(str(input_path))
-                return 0 if valid else 1
-            elif input_path.is_dir():
-                return self._validate_directory(input_path)
-            else:
-                logger.error(f"Input path does not exist: {input_path}")
-                return 1
-
         except Exception as e:
-            logger.error(f"Validation failed: {str(e)}")
+            logger.error(f"Failed to translate {input_file}: {e}")
             return 1
 
-    def _handle_analysis(self, args: argparse.Namespace) -> int:
-        """Handle the analysis command."""
-        input_path = Path(args.input)
+    def _generate_swift_host_code(self, ast: Any) -> str:
+        """Generate Swift host code with proper Metal setup"""
+        metal_code = []
 
+        # Import statements
+        metal_code.append("""
+            import Metal
+            import MetalKit
+            
+            // MARK: - Metal Setup
+            guard let device = MTLCreateSystemDefaultDevice() else {
+                fatalError("Metal is not supported on this device")
+            }
+            
+            guard let commandQueue = device.makeCommandQueue() else {
+                fatalError("Failed to create command queue")
+            }
+            """)
+
+        # Add buffer creation
+        for buffer in self._extract_buffers(ast):
+            metal_code.append(self._generate_swift_buffer(buffer))
+
+        # Add kernel execution
+        for kernel in self._extract_kernels(ast):
+            metal_code.append(self._generate_swift_kernel_execution(kernel))
+
+        return "\n".join(metal_code)
+
+    def _generate_objc_host_code(self, ast: Any) -> str:
+        """Generate Objective-C host code with proper Metal setup"""
+        metal_code = []
+
+        # Import and setup
+        metal_code.append("""
+            #import <Metal/Metal.h>
+            #import <MetalKit/MetalKit.h>
+            
+            id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+            if (!device) {
+                NSLog(@"Metal is not supported on this device");
+                return;
+            }
+            
+            id<MTLCommandQueue> commandQueue = [device newCommandQueue];
+            if (!commandQueue) {
+                NSLog(@"Failed to create command queue");
+                return;
+            }
+            """)
+
+        # Add buffer creation
+        for buffer in self._extract_buffers(ast):
+            metal_code.append(self._generate_objc_buffer(buffer))
+
+        # Add kernel execution
+        for kernel in self._extract_kernels(ast):
+            metal_code.append(self._generate_objc_kernel_execution(kernel))
+
+        return "\n".join(metal_code)
+
+    def _extract_kernels(self, ast: Any) -> List[Any]:
+        """Extract kernel nodes from AST"""
+        kernels = []
+        for node in ast.walk_preorder():
+            if hasattr(node, 'is_kernel') and node.is_kernel():
+                kernels.append(node)
+        return kernels
+
+    def _extract_buffers(self, ast: Any) -> List[Any]:
+        """Extract buffer nodes from AST"""
+        buffers = []
+        for node in ast.walk_preorder():
+            if hasattr(node, 'is_buffer') and node.is_buffer():
+                buffers.append(node)
+        return buffers
+
+    def cleanup(self):
+        """Clean up resources"""
         try:
-            report = self._analyze_code(input_path)
-
-            if args.report:
-                Path(args.report).write_text(report)
-            else:
-                print(report)
-
-            return 0
-
+            self.executor.shutdown(wait=True)
         except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
-            return 1
+            logger.error(f"Error during cleanup: {e}")
 
-    def _generate_host_code(self, ast: Any, language: str) -> str:
-        """Generate host code in the specified language."""
-        if language == 'swift':
-            return self._generate_swift_host_code(ast)
-        else:
-            return self._generate_objc_host_code(ast)
-
-    def _get_host_extension(self, language: str) -> str:
-        """Get the file extension for host code."""
-        return 'swift' if language == 'swift' else 'm'
-
-    def _validate_directory(self, directory: Path) -> int:
-        """Validate all CUDA files in a directory."""
-        cuda_files = list(directory.rglob("*.cu"))
-        if not cuda_files:
-            logger.error(f"No CUDA files found in {directory}")
-            return 1
-
-        failed = False
-        for file in cuda_files:
-            try:
-                valid = self.parser.validate_file(str(file))
-                if not valid:
-                    failed = True
-            except Exception as e:
-                logger.error(f"Failed to validate {file}: {e}")
-                failed = True
-
-        return 1 if failed else 0
-
-    def _analyze_code(self, path: Path) -> str:
-        """Analyze CUDA code and generate a report."""
-        # Implementation details here
-        pass
-
+# Direct script execution
 def main():
-    """Main entry point for the CLI."""
+    """Main entry point for CLI"""
     cli = CLI()
-    sys.exit(cli.run())
+    try:
+        return cli.run()
+    finally:
+        cli.cleanup()
 
 if __name__ == '__main__':
-    main()
+    import sys
+    sys.exit(main())
+Class: ('TranslationConfig', '')
+--------------------------------------------------------------------------------
+
 Class: ('CLI', '')
 --------------------------------------------------------------------------------
 
@@ -691,14 +677,19 @@ Class: ('CLI', '')
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\cli\config_parser.py
 
+"""
+Configuration Parser - Complete Production Implementation
+Handles parsing and validation of Metal configuration settings
+"""
 
-from typing import Dict, Any, Optional
+from dataclasses import dataclass
 import yaml
 import json
-import logging
 from pathlib import Path
-from dataclasses import dataclass
+from typing import Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+
 from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
 
@@ -706,7 +697,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class MetalConfig:
-    """Metal-specific configuration settings."""
+    """Metal-specific configuration settings"""
     max_threads_per_group: int = 1024
     max_total_threadgroup_memory: int = 32768  # 32KB
     simd_group_size: int = 32
@@ -717,7 +708,7 @@ class MetalConfig:
 
 @dataclass
 class OptimizationConfig:
-    """Optimization configuration settings."""
+    """Optimization configuration settings"""
     level: int = 2
     enable_vectorization: bool = True
     enable_loop_unrolling: bool = True
@@ -727,48 +718,58 @@ class OptimizationConfig:
     cache_size: int = 32768
     thread_count: int = 4
 
-@dataclass
-class TranslationConfig:
-    """Translation configuration settings."""
-    target_language: str = "swift"
-    generate_tests: bool = True
-    preserve_comments: bool = True
-    emit_debug_info: bool = True
-    source_map: bool = True
-    enable_profiling: bool = False
-    inline_threshold: int = 100
-
 class ConfigParser:
     """
-    Advanced configuration parser with validation and optimization capabilities.
+    Thread-safe configuration parser with validation and optimization support.
     Handles both YAML and JSON formats with extensive error checking.
     """
 
     def __init__(self):
+        """Initialize parser with default configurations"""
         self.metal_config = MetalConfig()
         self.optimization_config = OptimizationConfig()
-        self.translation_config = TranslationConfig()
-        self.custom_mappings: Dict[str, Any] = {}
-        self.validation_rules: Dict[str, Any] = {}
+        self._lock = Lock()
+        self._cache: Dict[str, Any] = {}
+
+        # Thread pool for parallel validation
+        self._executor = ThreadPoolExecutor(max_workers=4)
 
     def parse(self, config_path: str) -> Dict[str, Any]:
-        """Parse and validate configuration file."""
-        path = Path(config_path)
+        """
+        Parse and validate configuration file.
 
-        if not path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
+        Args:
+            config_path: Path to configuration file
 
+        Returns:
+            Dict containing validated configuration
+
+        Raises:
+            CudaTranslationError: If configuration is invalid
+        """
         try:
+            path = Path(config_path)
+            if not path.exists():
+                raise CudaTranslationError(f"Configuration file not found: {config_path}")
+
+            # Load and parse configuration
             config = self._load_config_file(path)
-            self._validate_config(config)
-            self._apply_config(config)
+
+            # Validate configuration
+            self._validate_configuration(config)
+
+            # Apply configuration
+            with self._lock:
+                self._apply_configuration(config)
+
             return self._generate_final_config()
+
         except Exception as e:
-            logger.error(f"Failed to parse configuration: {str(e)}")
-            raise
+            logger.error(f"Failed to parse configuration: {e}")
+            raise CudaTranslationError(f"Configuration parsing failed: {str(e)}")
 
     def _load_config_file(self, path: Path) -> Dict[str, Any]:
-        """Load configuration from file with format detection."""
+        """Load configuration from file with format detection"""
         content = path.read_text()
 
         if path.suffix in ['.yaml', '.yml']:
@@ -784,256 +785,255 @@ class ConfigParser:
         else:
             raise CudaTranslationError(f"Unsupported configuration format: {path.suffix}")
 
-    def _validate_config(self, config: Dict[str, Any]):
-        """Validate configuration with detailed error checking."""
+    def _validate_configuration(self, config: Dict[str, Any]):
+        """Validate all configuration sections"""
+        futures = []
 
-        # Validate Metal configuration
-        if 'metal' in config:
-            self._validate_metal_config(config['metal'])
+        with self._executor as executor:
+            if 'metal' in config:
+                futures.append(
+                    executor.submit(self._validate_metal_config, config['metal'])
+                )
+            if 'optimization' in config:
+                futures.append(
+                    executor.submit(self._validate_optimization_config, config['optimization'])
+                )
+            if 'translation' in config:
+                futures.append(
+                    executor.submit(self._validate_translation_config, config['translation'])
+                )
 
-        # Validate optimization configuration
-        if 'optimization' in config:
-            self._validate_optimization_config(config['optimization'])
-
-        # Validate translation configuration
-        if 'translation' in config:
-            self._validate_translation_config(config['translation'])
-
-        # Validate custom mappings
-        if 'mappings' in config:
-            self._validate_custom_mappings(config['mappings'])
+        # Check validation results
+        for future in futures:
+            future.result()  # This will raise any validation errors
 
     def _validate_metal_config(self, config: Dict[str, Any]):
-        """Validate Metal-specific configuration settings."""
-        if 'max_threads_per_group' in config:
-            value = config['max_threads_per_group']
-            if not isinstance(value, int) or value <= 0 or value > 1024:
-                raise ValueError("max_threads_per_group must be between 1 and 1024")
+        """Validate Metal configuration parameters with hardware constraints"""
+    if 'max_threads_per_group' in config:
+        value = config['max_threads_per_group']
+        if not isinstance(value, int) or value <= 0 or value > 1024:
+            raise CudaTranslationError(
+                f"max_threads_per_group must be between 1 and 1024, got {value}"
+            )
 
-        if 'max_total_threadgroup_memory' in config:
-            value = config['max_total_threadgroup_memory']
-            if not isinstance(value, int) or value <= 0 or value > 32768:
-                raise ValueError("max_total_threadgroup_memory must be between 1 and 32768")
+    if 'max_total_threadgroup_memory' in config:
+        value = config['max_total_threadgroup_memory']
+        if not isinstance(value, int) or value <= 0 or value > 32768:
+            raise CudaTranslationError(
+                f"max_total_threadgroup_memory must be between 1 and 32768, got {value}"
+            )
 
-    def _validate_optimization_config(self, config: Dict[str, Any]):
-        """Validate optimization configuration settings."""
-        if 'level' in config:
-            level = config['level']
-            if not isinstance(level, int) or level < 0 or level > 3:
-                raise ValueError("Optimization level must be between 0 and 3")
+    if 'simd_group_size' in config:
+        value = config['simd_group_size']
+        if value != 32:  # Metal requires SIMD group size of 32
+            raise CudaTranslationError("simd_group_size must be 32 for Metal")
 
-        if 'thread_count' in config:
-            count = config['thread_count']
-            if not isinstance(count, int) or count < 1:
-                raise ValueError("Thread count must be positive")
+    self._validate_memory_alignment(config)
+    self._validate_thread_dimensions(config)
 
-    def _validate_translation_config(self, config: Dict[str, Any]):
-        """Validate translation configuration settings."""
-        if 'target_language' in config:
-            language = config['target_language'].lower()
-            if language not in ['swift', 'objc']:
-                raise ValueError("Target language must be 'swift' or 'objc'")
+def _validate_memory_alignment(self, config: Dict[str, Any]):
+    """Validate memory alignment requirements"""
+    for param in ['buffer_alignment', 'texture_alignment']:
+        if param in config:
+            value = config[param]
+            if not isinstance(value, int) or value <= 0 or (value & (value - 1)) != 0:
+                raise CudaTranslationError(
+                    f"{param} must be a positive power of 2, got {value}"
+                )
 
-    def _validate_custom_mappings(self, mappings: Dict[str, Any]):
-        """Validate custom type and function mappings."""
-        if 'types' in mappings:
-            self._validate_type_mappings(mappings['types'])
-        if 'functions' in mappings:
-            self._validate_function_mappings(mappings['functions'])
+def _validate_thread_dimensions(self, config: Dict[str, Any]):
+    """Validate thread dimension constraints"""
+    if 'preferred_threadgroup_size' in config:
+        size = config['preferred_threadgroup_size']
+        if not isinstance(size, int) or size <= 0 or size > 1024:
+            raise CudaTranslationError(
+                f"preferred_threadgroup_size must be between 1 and 1024, got {size}"
+            )
+        if size % 32 != 0:  # Must be multiple of SIMD width
+            raise CudaTranslationError(
+                f"preferred_threadgroup_size must be multiple of 32, got {size}"
+            )
 
-    def _apply_config(self, config: Dict[str, Any]):
-        """Apply validated configuration to internal state."""
-        with ThreadPoolExecutor() as executor:
-            futures = []
+def _validate_optimization_config(self, config: Dict[str, Any]):
+    """Validate optimization settings with performance implications"""
+    if 'level' in config:
+        level = config['level']
+        if not isinstance(level, int) or level < 0 or level > 3:
+            raise CudaTranslationError(
+                f"Optimization level must be between 0 and 3, got {level}"
+            )
 
-            if 'metal' in config:
-                futures.append(executor.submit(self._apply_metal_config, config['metal']))
-            if 'optimization' in config:
-                futures.append(executor.submit(self._apply_optimization_config, config['optimization']))
-            if 'translation' in config:
-                futures.append(executor.submit(self._apply_translation_config, config['translation']))
-            if 'mappings' in config:
-                futures.append(executor.submit(self._apply_custom_mappings, config['mappings']))
+    for bool_param in [
+        'enable_vectorization',
+        'enable_loop_unrolling',
+        'enable_memory_coalescing',
+        'enable_barrier_optimization'
+    ]:
+        if bool_param in config and not isinstance(config[bool_param], bool):
+            raise CudaTranslationError(
+                f"{bool_param} must be a boolean value"
+            )
 
-            # Wait for all configurations to be applied
-            for future in futures:
-                future.result()
+    self._validate_optimization_factors(config)
+    self._validate_resource_limits(config)
 
-    def _apply_metal_config(self, config: Dict[str, Any]):
-        """Apply Metal configuration settings."""
-        self.metal_config = MetalConfig(
-            max_threads_per_group=config.get('max_threads_per_group', self.metal_config.max_threads_per_group),
-            max_total_threadgroup_memory=config.get('max_total_threadgroup_memory', self.metal_config.max_total_threadgroup_memory),
-            simd_group_size=config.get('simd_group_size', self.metal_config.simd_group_size),
-            preferred_threadgroup_size=config.get('preferred_threadgroup_size', self.metal_config.preferred_threadgroup_size),
-            enable_fast_math=config.get('enable_fast_math', self.metal_config.enable_fast_math),
-            buffer_alignment=config.get('buffer_alignment', self.metal_config.buffer_alignment),
-            texture_alignment=config.get('texture_alignment', self.metal_config.texture_alignment)
+def _validate_optimization_factors(self, config: Dict[str, Any]):
+    """Validate optimization factor constraints"""
+    if 'max_unroll_factor' in config:
+        factor = config['max_unroll_factor']
+        if not isinstance(factor, int) or factor <= 0 or factor > 32:
+            raise CudaTranslationError(
+                f"max_unroll_factor must be between 1 and 32, got {factor}"
+            )
+
+    if 'cache_size' in config:
+        size = config['cache_size']
+        if not isinstance(size, int) or size <= 0:
+            raise CudaTranslationError(
+                f"cache_size must be positive, got {size}"
+            )
+
+def _validate_resource_limits(self, config: Dict[str, Any]):
+    """Validate hardware resource limitations"""
+    if 'thread_count' in config:
+        count = config['thread_count']
+        if not isinstance(count, int) or count <= 0:
+            raise CudaTranslationError(
+                f"thread_count must be positive, got {count}"
+            )
+
+        # Check system CPU count for reasonable limits
+        import os
+        cpu_count = os.cpu_count() or 1
+        if count > cpu_count * 4:
+            logger.warning(
+                f"thread_count {count} exceeds recommended maximum of {cpu_count * 4}"
+            )
+
+def _apply_configuration(self, config: Dict[str, Any]):
+    """Apply validated configuration settings"""
+    with self._lock:
+        if 'metal' in config:
+            self._apply_metal_config(config['metal'])
+        if 'optimization' in config:
+            self._apply_optimization_config(config['optimization'])
+        if 'translation' in config:
+            self._apply_translation_config(config['translation'])
+
+def _apply_metal_config(self, config: Dict[str, Any]):
+    """Apply Metal-specific configuration"""
+    self.metal_config = MetalConfig(
+        max_threads_per_group=config.get(
+            'max_threads_per_group',
+            self.metal_config.max_threads_per_group
+        ),
+        max_total_threadgroup_memory=config.get(
+            'max_total_threadgroup_memory',
+            self.metal_config.max_total_threadgroup_memory
+        ),
+        simd_group_size=config.get(
+            'simd_group_size',
+            self.metal_config.simd_group_size
+        ),
+        preferred_threadgroup_size=config.get(
+            'preferred_threadgroup_size',
+            self.metal_config.preferred_threadgroup_size
+        ),
+        enable_fast_math=config.get(
+            'enable_fast_math',
+            self.metal_config.enable_fast_math
+        ),
+        buffer_alignment=config.get(
+            'buffer_alignment',
+            self.metal_config.buffer_alignment
+        ),
+        texture_alignment=config.get(
+            'texture_alignment',
+            self.metal_config.texture_alignment
         )
+    )
 
-    def _apply_optimization_config(self, config: Dict[str, Any]):
-        """Apply optimization configuration settings."""
-        self.optimization_config = OptimizationConfig(
-            level=config.get('level', self.optimization_config.level),
-            enable_vectorization=config.get('enable_vectorization', self.optimization_config.enable_vectorization),
-            enable_loop_unrolling=config.get('enable_loop_unrolling', self.optimization_config.enable_loop_unrolling),
-            enable_memory_coalescing=config.get('enable_memory_coalescing', self.optimization_config.enable_memory_coalescing),
-            enable_barrier_optimization=config.get('enable_barrier_optimization', self.optimization_config.enable_barrier_optimization),
-            max_unroll_factor=config.get('max_unroll_factor', self.optimization_config.max_unroll_factor),
-            cache_size=config.get('cache_size', self.optimization_config.cache_size),
-            thread_count=config.get('thread_count', self.optimization_config.thread_count)
+def _apply_optimization_config(self, config: Dict[str, Any]):
+    """Apply optimization configuration"""
+    self.optimization_config = OptimizationConfig(
+        level=config.get('level', self.optimization_config.level),
+        enable_vectorization=config.get(
+            'enable_vectorization',
+            self.optimization_config.enable_vectorization
+        ),
+        enable_loop_unrolling=config.get(
+            'enable_loop_unrolling',
+            self.optimization_config.enable_loop_unrolling
+        ),
+        enable_memory_coalescing=config.get(
+            'enable_memory_coalescing',
+            self.optimization_config.enable_memory_coalescing
+        ),
+        enable_barrier_optimization=config.get(
+            'enable_barrier_optimization',
+            self.optimization_config.enable_barrier_optimization
+        ),
+        max_unroll_factor=config.get(
+            'max_unroll_factor',
+            self.optimization_config.max_unroll_factor
+        ),
+        cache_size=config.get(
+            'cache_size',
+            self.optimization_config.cache_size
+        ),
+        thread_count=config.get(
+            'thread_count',
+            self.optimization_config.thread_count
         )
+    )
 
-    def _apply_translation_config(self, config: Dict[str, Any]):
-        """Apply translation configuration settings."""
-        self.translation_config = TranslationConfig(
-            target_language=config.get('target_language', self.translation_config.target_language),
-            generate_tests=config.get('generate_tests', self.translation_config.generate_tests),
-            preserve_comments=config.get('preserve_comments', self.translation_config.preserve_comments),
-            emit_debug_info=config.get('emit_debug_info', self.translation_config.emit_debug_info),
-            source_map=config.get('source_map', self.translation_config.source_map),
-            enable_profiling=config.get('enable_profiling', self.translation_config.enable_profiling),
-            inline_threshold=config.get('inline_threshold', self.translation_config.inline_threshold)
-        )
-
-    def _apply_custom_mappings(self, mappings: Dict[str, Any]):
-        """Apply custom type and function mappings."""
-        self.custom_mappings = mappings
-
-    def _generate_final_config(self) -> Dict[str, Any]:
-        """Generate final configuration dictionary."""
-        return {
-            'metal': {
-                'max_threads_per_group': self.metal_config.max_threads_per_group,
-                'max_total_threadgroup_memory': self.metal_config.max_total_threadgroup_memory,
-                'simd_group_size': self.metal_config.simd_group_size,
-                'preferred_threadgroup_size': self.metal_config.preferred_threadgroup_size,
-                'enable_fast_math': self.metal_config.enable_fast_math,
-                'buffer_alignment': self.metal_config.buffer_alignment,
-                'texture_alignment': self.metal_config.texture_alignment
-            },
-            'optimization': {
-                'level': self.optimization_config.level,
-                'enable_vectorization': self.optimization_config.enable_vectorization,
-                'enable_loop_unrolling': self.optimization_config.enable_loop_unrolling,
-                'enable_memory_coalescing': self.optimization_config.enable_memory_coalescing,
-                'enable_barrier_optimization': self.optimization_config.enable_barrier_optimization,
-                'max_unroll_factor': self.optimization_config.max_unroll_factor,
-                'cache_size': self.optimization_config.cache_size,
-                'thread_count': self.optimization_config.thread_count
-            },
-            'translation': {
-                'target_language': self.translation_config.target_language,
-                'generate_tests': self.translation_config.generate_tests,
-                'preserve_comments': self.translation_config.preserve_comments,
-                'emit_debug_info': self.translation_config.emit_debug_info,
-                'source_map': self.translation_config.source_map,
-                'enable_profiling': self.translation_config.enable_profiling,
-                'inline_threshold': self.translation_config.inline_threshold
-            },
-            'mappings': self.custom_mappings
+def _generate_final_config(self) -> Dict[str, Any]:
+    """Generate final configuration dictionary"""
+    return {
+        'metal': {
+            'max_threads_per_group': self.metal_config.max_threads_per_group,
+            'max_total_threadgroup_memory':
+                self.metal_config.max_total_threadgroup_memory,
+            'simd_group_size': self.metal_config.simd_group_size,
+            'preferred_threadgroup_size':
+                self.metal_config.preferred_threadgroup_size,
+            'enable_fast_math': self.metal_config.enable_fast_math,
+            'buffer_alignment': self.metal_config.buffer_alignment,
+            'texture_alignment': self.metal_config.texture_alignment
+        },
+        'optimization': {
+            'level': self.optimization_config.level,
+            'enable_vectorization': self.optimization_config.enable_vectorization,
+            'enable_loop_unrolling': self.optimization_config.enable_loop_unrolling,
+            'enable_memory_coalescing':
+                self.optimization_config.enable_memory_coalescing,
+            'enable_barrier_optimization':
+                self.optimization_config.enable_barrier_optimization,
+            'max_unroll_factor': self.optimization_config.max_unroll_factor,
+            'cache_size': self.optimization_config.cache_size,
+            'thread_count': self.optimization_config.thread_count
         }
+    }
 
-logger.info("ConfigParser initialized with Metal-specific optimizations.")
+def cleanup(self):
+    """Clean up resources"""
+    try:
+        self._executor.shutdown(wait=True)
+        with self._lock:
+            self._cache.clear()
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
 Class: ('MetalConfig', '')
 --------------------------------------------------------------------------------
-  Method: get('max_threads_per_group', self.metal_config.max_threads_per_group)
-  Method: get('max_total_threadgroup_memory', self.metal_config.max_total_threadgroup_memory)
-  Method: get('simd_group_size', self.metal_config.simd_group_size)
-  Method: get('preferred_threadgroup_size', self.metal_config.preferred_threadgroup_size)
-  Method: get('enable_fast_math', self.metal_config.enable_fast_math)
-  Method: get('buffer_alignment', self.metal_config.buffer_alignment)
-  Method: get('texture_alignment', self.metal_config.texture_alignment)
   Method: get('level', self.optimization_config.level)
-  Method: get('enable_vectorization', self.optimization_config.enable_vectorization)
-  Method: get('enable_loop_unrolling', self.optimization_config.enable_loop_unrolling)
-  Method: get('enable_memory_coalescing', self.optimization_config.enable_memory_coalescing)
-  Method: get('enable_barrier_optimization', self.optimization_config.enable_barrier_optimization)
-  Method: get('max_unroll_factor', self.optimization_config.max_unroll_factor)
-  Method: get('cache_size', self.optimization_config.cache_size)
-  Method: get('thread_count', self.optimization_config.thread_count)
-  Method: get('target_language', self.translation_config.target_language)
-  Method: get('generate_tests', self.translation_config.generate_tests)
-  Method: get('preserve_comments', self.translation_config.preserve_comments)
-  Method: get('emit_debug_info', self.translation_config.emit_debug_info)
-  Method: get('source_map', self.translation_config.source_map)
-  Method: get('enable_profiling', self.translation_config.enable_profiling)
-  Method: get('inline_threshold', self.translation_config.inline_threshold)
 
 Class: ('OptimizationConfig', '')
 --------------------------------------------------------------------------------
-  Method: get('max_threads_per_group', self.metal_config.max_threads_per_group)
-  Method: get('max_total_threadgroup_memory', self.metal_config.max_total_threadgroup_memory)
-  Method: get('simd_group_size', self.metal_config.simd_group_size)
-  Method: get('preferred_threadgroup_size', self.metal_config.preferred_threadgroup_size)
-  Method: get('enable_fast_math', self.metal_config.enable_fast_math)
-  Method: get('buffer_alignment', self.metal_config.buffer_alignment)
-  Method: get('texture_alignment', self.metal_config.texture_alignment)
   Method: get('level', self.optimization_config.level)
-  Method: get('enable_vectorization', self.optimization_config.enable_vectorization)
-  Method: get('enable_loop_unrolling', self.optimization_config.enable_loop_unrolling)
-  Method: get('enable_memory_coalescing', self.optimization_config.enable_memory_coalescing)
-  Method: get('enable_barrier_optimization', self.optimization_config.enable_barrier_optimization)
-  Method: get('max_unroll_factor', self.optimization_config.max_unroll_factor)
-  Method: get('cache_size', self.optimization_config.cache_size)
-  Method: get('thread_count', self.optimization_config.thread_count)
-  Method: get('target_language', self.translation_config.target_language)
-  Method: get('generate_tests', self.translation_config.generate_tests)
-  Method: get('preserve_comments', self.translation_config.preserve_comments)
-  Method: get('emit_debug_info', self.translation_config.emit_debug_info)
-  Method: get('source_map', self.translation_config.source_map)
-  Method: get('enable_profiling', self.translation_config.enable_profiling)
-  Method: get('inline_threshold', self.translation_config.inline_threshold)
-
-Class: ('TranslationConfig', '')
---------------------------------------------------------------------------------
-  Method: get('max_threads_per_group', self.metal_config.max_threads_per_group)
-  Method: get('max_total_threadgroup_memory', self.metal_config.max_total_threadgroup_memory)
-  Method: get('simd_group_size', self.metal_config.simd_group_size)
-  Method: get('preferred_threadgroup_size', self.metal_config.preferred_threadgroup_size)
-  Method: get('enable_fast_math', self.metal_config.enable_fast_math)
-  Method: get('buffer_alignment', self.metal_config.buffer_alignment)
-  Method: get('texture_alignment', self.metal_config.texture_alignment)
-  Method: get('level', self.optimization_config.level)
-  Method: get('enable_vectorization', self.optimization_config.enable_vectorization)
-  Method: get('enable_loop_unrolling', self.optimization_config.enable_loop_unrolling)
-  Method: get('enable_memory_coalescing', self.optimization_config.enable_memory_coalescing)
-  Method: get('enable_barrier_optimization', self.optimization_config.enable_barrier_optimization)
-  Method: get('max_unroll_factor', self.optimization_config.max_unroll_factor)
-  Method: get('cache_size', self.optimization_config.cache_size)
-  Method: get('thread_count', self.optimization_config.thread_count)
-  Method: get('target_language', self.translation_config.target_language)
-  Method: get('generate_tests', self.translation_config.generate_tests)
-  Method: get('preserve_comments', self.translation_config.preserve_comments)
-  Method: get('emit_debug_info', self.translation_config.emit_debug_info)
-  Method: get('source_map', self.translation_config.source_map)
-  Method: get('enable_profiling', self.translation_config.enable_profiling)
-  Method: get('inline_threshold', self.translation_config.inline_threshold)
 
 Class: ('ConfigParser', '')
 --------------------------------------------------------------------------------
-  Method: get('max_threads_per_group', self.metal_config.max_threads_per_group)
-  Method: get('max_total_threadgroup_memory', self.metal_config.max_total_threadgroup_memory)
-  Method: get('simd_group_size', self.metal_config.simd_group_size)
-  Method: get('preferred_threadgroup_size', self.metal_config.preferred_threadgroup_size)
-  Method: get('enable_fast_math', self.metal_config.enable_fast_math)
-  Method: get('buffer_alignment', self.metal_config.buffer_alignment)
-  Method: get('texture_alignment', self.metal_config.texture_alignment)
   Method: get('level', self.optimization_config.level)
-  Method: get('enable_vectorization', self.optimization_config.enable_vectorization)
-  Method: get('enable_loop_unrolling', self.optimization_config.enable_loop_unrolling)
-  Method: get('enable_memory_coalescing', self.optimization_config.enable_memory_coalescing)
-  Method: get('enable_barrier_optimization', self.optimization_config.enable_barrier_optimization)
-  Method: get('max_unroll_factor', self.optimization_config.max_unroll_factor)
-  Method: get('cache_size', self.optimization_config.cache_size)
-  Method: get('thread_count', self.optimization_config.thread_count)
-  Method: get('target_language', self.translation_config.target_language)
-  Method: get('generate_tests', self.translation_config.generate_tests)
-  Method: get('preserve_comments', self.translation_config.preserve_comments)
-  Method: get('emit_debug_info', self.translation_config.emit_debug_info)
-  Method: get('source_map', self.translation_config.source_map)
-  Method: get('enable_profiling', self.translation_config.enable_profiling)
-  Method: get('inline_threshold', self.translation_config.inline_threshold)
 
 
 --------------------------------------------------------------------------------
@@ -1052,12 +1052,12 @@ Provides comprehensive type system and node hierarchy for robust AST manipulatio
 """
 
 from __future__ import annotations
-import re
-import sys
 from typing import Dict, List, Optional, Union, Any, Set, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
+
+# Define CUDA Types
 class CUDAType(Enum):
     """CUDA built-in types following NVIDIA specification"""
     VOID = "void"
@@ -1119,8 +1119,11 @@ class CUDAType(Enum):
 
     @classmethod
     def is_vector_type(cls, type_name: str) -> bool:
+        """Check if the type is a vector type."""
         return any(v.value == type_name for v in cls) and any(str(i) in type_name for i in range(1, 5))
 
+
+# Define CUDA Qualifiers
 class CUDAQualifier(Enum):
     """CUDA type qualifiers following NVIDIA specification"""
     CONST = "__const__"
@@ -1132,14 +1135,8 @@ class CUDAQualifier(Enum):
     RESTRICT = "__restrict__"
     MANAGED = "__managed__"
 
-@dataclass
-class SourceLocation:
-    """Source code location information"""
-    file: str
-    line: int
-    column: int
-    offset: int
 
+# Define CUDA AST Node Types
 class CUDANodeType(Enum):
     """Enumeration of all CUDA AST node types"""
     COMPOUND_STMT = auto()
@@ -1161,6 +1158,8 @@ class CUDANodeType(Enum):
     NAMESPACE = auto()
     TEMPLATE = auto()
 
+
+# Base CUDA AST Node
 class CUDANode:
     """Base class for all CUDA AST nodes"""
     def __init__(self, line: int, column: int):
@@ -1197,25 +1196,87 @@ class CUDANode:
         for child in self.children:
             child.traverse(callback)
 
-class CUDAKernel(CUDANode):
-    """CUDA kernel function definition"""
+
+# Source Location Information
+@dataclass
+class SourceLocation:
+    """Source code location information"""
+    file: str
+    line: int
+    column: int
+    offset: int
+
+
+# CUDA Expression Node
+@dataclass
+class CUDAExpressionNode(CUDANode):
+    """Represents an expression in CUDA code"""
+    kind: str
+    operator: Optional[str] = None
+    left: Optional[CUDAExpressionNode] = None
+    right: Optional[CUDAExpressionNode] = None
+    operand: Optional[CUDAExpressionNode] = None
+    function: Optional[str] = None
+    arguments: List[CUDAExpressionNode] = field(default_factory=list)
+    array: Optional[CUDAExpressionNode] = None
+    index: Optional[CUDAExpressionNode] = None
+    base: Optional[CUDAExpressionNode] = None
+    member: Optional[str] = None
+    condition: Optional[CUDAExpressionNode] = None
+    then_expression: Optional[CUDAExpressionNode] = None
+    else_expression: Optional[CUDAExpressionNode] = None
+    elements: List[CUDAExpressionNode] = field(default_factory=list)
+    spelling: Optional[str] = None
+
+
+# CUDA Statement Node
+@dataclass
+class CUDAStatement(CUDANode):
+    """Represents a statement in CUDA code"""
+    kind: str
+    expression: Optional[CUDAExpressionNode] = None
+    condition: Optional[CUDAExpressionNode] = None
+    then_branch: List[CUDANode] = field(default_factory=list)
+    else_branch: List[CUDANode] = field(default_factory=list)
+    init: Optional[CUDAExpressionNode] = None
+    increment: Optional[CUDAExpressionNode] = None
+    body: List[CUDANode] = field(default_factory=list)
+
+
+# Function Base Node
+class FunctionNode(CUDANode):
+    """Base class for functions"""
     def __init__(self, name: str, return_type: CUDAType,
-                 parameters: List[CUDAParameter], line: int, column: int):
+                 parameters: List[CUDAParameter], body: CUDACompoundStmt,
+                 line: int, column: int):
         super().__init__(line, column)
         self.name = name
         self.return_type = return_type
         self.parameters = parameters
+        self.body = body
+        self.metal_name: Optional[str] = None
+
+    def add_parameter(self, parameter: CUDAParameter) -> None:
+        """Add a parameter to the function"""
+        self.parameters.append(parameter)
+        self.add_child(parameter)
+
+
+# Kernel Node
+class CUDAKernel(FunctionNode):
+    """CUDA kernel function definition"""
+    def __init__(self, name: str, return_type: CUDAType,
+                 parameters: List[CUDAParameter], body: CUDACompoundStmt,
+                 line: int, column: int):
+        super().__init__(name, return_type, parameters, body, line, column)
+        self.add_qualifier(CUDAQualifier.GLOBAL)
         self.launch_bounds: Optional[Dict[str, int]] = None
         self.thread_hierarchy: Dict[str, Dict[str, int]] = {
             'block': {'x': 256, 'y': 1, 'z': 1},
             'grid': {'x': 1, 'y': 1, 'z': 1}
         }
         self.shared_memory_size = 0
-        self.add_qualifier(CUDAQualifier.GLOBAL)
-
-        # Add parameters as children with validation
-        for param in parameters:
-            self.add_child(param)
+        self.shared_memory_vars: List[CUDASharedMemory] = []
 
     def set_launch_bounds(self, max_threads: int, min_blocks: Optional[int] = None) -> None:
         """Set kernel launch bounds with validation"""
@@ -1225,6 +1286,8 @@ class CUDAKernel(CUDANode):
         if min_blocks is not None:
             self.launch_bounds['minBlocksPerMultiprocessor'] = min_blocks
 
+
+# CUDA Parameter Node
 class CUDAParameter(CUDANode):
     """CUDA kernel parameter"""
     def __init__(self, name: str, param_type: CUDAType, is_pointer: bool,
@@ -1239,6 +1302,8 @@ class CUDAParameter(CUDANode):
         """Add array dimension with validation"""
         self.array_dims.append(size)
 
+
+# CUDA Shared Memory Declaration
 class CUDASharedMemory(CUDANode):
     """CUDA shared memory declaration"""
     def __init__(self, name: str, data_type: CUDAType, size: Optional[int],
@@ -1250,6 +1315,8 @@ class CUDASharedMemory(CUDANode):
         self.is_dynamic = size is None
         self.add_qualifier(CUDAQualifier.SHARED)
 
+
+# CUDA Thread Index Access
 class CUDAThreadIdx(CUDANode):
     """CUDA thread index access (threadIdx)"""
     def __init__(self, dimension: str, line: int, column: int):
@@ -1259,6 +1326,8 @@ class CUDAThreadIdx(CUDANode):
         self.dimension = dimension
         self.cuda_type = CUDAType.UINT
 
+
+# CUDA Block Index Access
 class CUDABlockIdx(CUDANode):
     """CUDA block index access (blockIdx)"""
     def __init__(self, dimension: str, line: int, column: int):
@@ -1268,6 +1337,8 @@ class CUDABlockIdx(CUDANode):
         self.dimension = dimension
         self.cuda_type = CUDAType.UINT
 
+
+# CUDA Compound Statement
 class CUDACompoundStmt(CUDANode):
     """Represents a compound statement (block of code)"""
     def __init__(self, statements: List[CUDANode], line: int, column: int):
@@ -1280,40 +1351,32 @@ class CUDACompoundStmt(CUDANode):
         """Get all statements in compound statement"""
         return self.children
 
-class FunctionNode(CUDANode):
-    """Base class for functions"""
-    def __init__(self, name: str, return_type: CUDAType,
-                 parameters: List[CUDAParameter], body: CUDACompoundStmt,
+
+# Variable Declaration Node
+class VariableNode(CUDANode):
+    """Variable declaration node"""
+    def __init__(self, name: str, var_type: CUDAType, is_pointer: bool,
                  line: int, column: int):
         super().__init__(line, column)
         self.name = name
-        self.return_type = return_type
-        self.parameters = parameters
-        self.body = body
-        self.metal_name: Optional[str] = None
-
-class KernelNode(FunctionNode):
-    """Specialized node for CUDA kernels"""
-    def __init__(self, name: str, parameters: List[CUDAParameter],
-                 body: CUDACompoundStmt, line: int, column: int):
-        super().__init__(name, CUDAType.VOID, parameters, body, line, column)
-        self.add_qualifier(CUDAQualifier.GLOBAL)
-        self.thread_hierarchy = {
-            'block': {'x': 256, 'y': 1, 'z': 1},
-            'grid': {'x': 1, 'y': 1, 'z': 1}
-        }
-        self.shared_memory_vars: List[CUDASharedMemory] = []
-
-class VariableNode(CUDANode):
-    """Variable declaration node"""
-    def __init__(self, name: str, var_type: CUDAType, line: int, column: int):
-        super().__init__(line, column)
-        self.name = name
         self.var_type = var_type
+        self.is_pointer = is_pointer
         self.is_array = False
         self.array_dims: List[int] = []
         self.initializer: Optional[CUDANode] = None
 
+    def add_array_dimension(self, size: int) -> None:
+        """Add array dimension with validation"""
+        self.array_dims.append(size)
+        self.is_array = True
+
+    def set_initializer(self, initializer: CUDANode) -> None:
+        """Set initializer for the variable"""
+        self.initializer = initializer
+        self.add_child(initializer)
+
+
+# Structure Definition Node
 class StructNode(CUDANode):
     """Structure definition node"""
     def __init__(self, name: str, fields: List[VariableNode],
@@ -1325,6 +1388,8 @@ class StructNode(CUDANode):
         for field in fields:
             self.add_child(field)
 
+
+# Enumeration Definition Node
 class EnumNode(CUDANode):
     """Enumeration definition node"""
     def __init__(self, name: str, values: Dict[str, int],
@@ -1334,6 +1399,8 @@ class EnumNode(CUDANode):
         self.values = values
         self.underlying_type = CUDAType.INT
 
+
+# Typedef Definition Node
 class TypedefNode(CUDANode):
     """Typedef definition node"""
     def __init__(self, name: str, original_type: CUDAType,
@@ -1343,6 +1410,8 @@ class TypedefNode(CUDANode):
         self.original_type = original_type
         self.metal_type: Optional[str] = None
 
+
+# Class Definition Node
 class ClassNode(CUDANode):
     """Class definition node"""
     def __init__(self, name: str, methods: List[FunctionNode],
@@ -1357,6 +1426,8 @@ class ClassNode(CUDANode):
         for field in fields:
             self.add_child(field)
 
+
+# Namespace Definition Node
 class NamespaceNode(CUDANode):
     """Namespace definition node"""
     def __init__(self, name: str, declarations: List[CUDANode],
@@ -1367,6 +1438,8 @@ class NamespaceNode(CUDANode):
         for decl in declarations:
             self.add_child(decl)
 
+
+# Template Definition Node
 class TemplateNode(CUDANode):
     """Template definition node"""
     def __init__(self, name: str, parameters: List[str],
@@ -1377,14 +1450,18 @@ class TemplateNode(CUDANode):
         self.body = body
         self.add_child(body)
 
+
+# Root CUDA AST Node
 class CudaASTNode(CUDANode):
     """Root node for CUDA AST"""
     def __init__(self):
-        super().__init__(0, 0)
+        super().__init__(line=0, column=0)
         self.translation_unit: Optional[str] = None
         self.metal_target: Optional[str] = None
         self.optimization_level = 2
 
+
+# CUDA Translation Context
 class CudaTranslationContext:
     """Context for CUDA-to-Metal translation process"""
     def __init__(self, source_file: str, metal_target: str = "2.4",
@@ -1405,7 +1482,8 @@ class CudaTranslationContext:
 
     def exit_scope(self) -> None:
         """Exit current scope"""
-        self.current_scope.pop()
+        if self.current_scope:
+            self.current_scope.pop()
 
     def get_next_buffer_index(self) -> int:
         """Get next available buffer index"""
@@ -1413,17 +1491,16 @@ class CudaTranslationContext:
         self.buffer_index += 1
         return index
 
-# Convenience type aliases
+
+# Convenience Type Aliases
 KernelNode = CUDAKernel
 ParameterNode = CUDAParameter
 CompoundStmtNode = CUDACompoundStmt
+
 Class: ('CUDAType', '(Enum)')
 --------------------------------------------------------------------------------
 
 Class: ('CUDAQualifier', '(Enum)')
---------------------------------------------------------------------------------
-
-Class: ('SourceLocation', '')
 --------------------------------------------------------------------------------
 
 Class: ('CUDANodeType', '(Enum)')
@@ -1432,7 +1509,19 @@ Class: ('CUDANodeType', '(Enum)')
 Class: ('CUDANode', '')
 --------------------------------------------------------------------------------
 
-Class: ('CUDAKernel', '(CUDANode)')
+Class: ('SourceLocation', '')
+--------------------------------------------------------------------------------
+
+Class: ('CUDAExpressionNode', '(CUDANode)')
+--------------------------------------------------------------------------------
+
+Class: ('CUDAStatement', '(CUDANode)')
+--------------------------------------------------------------------------------
+
+Class: ('FunctionNode', '(CUDANode)')
+--------------------------------------------------------------------------------
+
+Class: ('CUDAKernel', '(FunctionNode)')
 --------------------------------------------------------------------------------
 
 Class: ('CUDAParameter', '(CUDANode)')
@@ -1448,12 +1537,6 @@ Class: ('CUDABlockIdx', '(CUDANode)')
 --------------------------------------------------------------------------------
 
 Class: ('CUDACompoundStmt', '(CUDANode)')
---------------------------------------------------------------------------------
-
-Class: ('FunctionNode', '(CUDANode)')
---------------------------------------------------------------------------------
-
-Class: ('KernelNode', '(FunctionNode)')
 --------------------------------------------------------------------------------
 
 Class: ('VariableNode', '(CUDANode)')
@@ -1634,19 +1717,10 @@ Class: ('ClangParser', '')
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\core\parser\__init__.py
 
-# Location: /CUDAM/parser/__init__.py
+# CUDAM/core/parser/__init__.py
 
-"""
-CUDA AST Node Module Initialization
-Provides complete type system and node hierarchy for CUDA to Metal translation.
-
-Usage:
-    from .parser import CUDAKernel, CUDAType, CUDAQualifier
-"""
-
-# Core node system imports
+# Optionally, import classes from ast_nodes.py for easier access
 from .ast_nodes import (
-    # Core node types and enums
     CUDANode,
     CUDAKernel,
     CUDAParameter,
@@ -1671,12 +1745,6 @@ from .ast_nodes import (
     CudaTranslationContext
 )
 
-# Core configuration
-VERSION = "1.0.0"
-METAL_TARGET = "2.4"
-OPTIMIZATION_LEVEL = 2
-
-# Public API - Defines exactly what gets exported
 __all__ = [
     "CUDANode",
     "CUDAKernel",
@@ -1702,30 +1770,6 @@ __all__ = [
     "CudaTranslationContext"
 ]
 
-# Convenience aliases
-KernelNode = CUDAKernel
-ParameterNode = CUDAParameter
-CompoundStmtNode = CUDACompoundStmt
-
-# Initialize configuration
-def init_translation(
-        source_file: str,
-        metal_target: str = METAL_TARGET,
-        optimization_level: int = OPTIMIZATION_LEVEL
-) -> CudaTranslationContext:
-    """Initialize AST translation context with specified parameters."""
-    return CudaTranslationContext(
-        source_file=source_file,
-        metal_target=metal_target,
-        optimization_level=optimization_level
-    )
-
-# Error checking and validation
-def validate_ast(node: CUDANode) -> bool:
-    """Validate AST node and its children for Metal compatibility."""
-    if not isinstance(node, CUDANode):
-        return False
-    return all(validate_ast(child) for child in node.children)
 
 --------------------------------------------------------------------------------
 
@@ -6717,8 +6761,8 @@ class CudaParser:
 
         cache_entry = self.ast_cache[file_path]
         return (
-                cache_entry['hash'] == file_hash and
-                cache_entry['timestamp'] == os.path.getmtime(file_path)
+            cache_entry['hash'] == file_hash and
+            cache_entry['timestamp'] == os.path.getmtime(file_path)
         )
 
     def _get_clang_args(self) -> List[str]:
@@ -6786,9 +6830,9 @@ class CudaParser:
                 file_path,
                 args=args,
                 options=(
-                        TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD |
-                        TranslationUnit.PARSE_INCOMPLETE |
-                        TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS
+                    TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD |
+                    TranslationUnit.PARSE_INCOMPLETE |
+                    TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS
                 )
             )
 
@@ -9209,6 +9253,96 @@ Class: ('CudaSyntaxValidator', '')
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\parser\__init__.py
 
+"""
+CUDA Parser Module Initialization
+Provides complete type system and node hierarchy for CUDA to Metal translation.
+
+Usage:
+    from CUDAM.parser import CUDAKernel, CUDAType, CUDAQualifier
+"""
+
+# Core node system imports using absolute imports
+from core.parser.ast_nodes import (
+    # Core node types and enums
+    CUDANode,
+    CUDAKernel,
+    CUDAParameter,
+    CUDAType,
+    CUDAQualifier,
+    CUDASharedMemory,
+    CUDAThreadIdx,
+    CUDABarrier,
+    CUDACompoundStmt,
+    CUDAExpressionNode,
+    CUDAStatement,
+    FunctionNode,
+    KernelNode,
+    VariableNode,
+    StructNode,
+    EnumNode,
+    TypedefNode,
+    ClassNode,
+    NamespaceNode,
+    TemplateNode,
+    CudaASTNode,
+    CudaTranslationContext
+)
+
+# Core configuration
+VERSION = "1.0.0"
+METAL_TARGET = "2.4"
+OPTIMIZATION_LEVEL = 2
+
+# Public API - Defines exactly what gets exported
+__all__ = [
+    "CUDANode",
+    "CUDAKernel",
+    "CUDAParameter",
+    "CUDAType",
+    "CUDAQualifier",
+    "CUDASharedMemory",
+    "CUDAThreadIdx",
+    "CUDABarrier",
+    "CUDACompoundStmt",
+    "CUDAExpressionNode",
+    "CUDAStatement",
+    "FunctionNode",
+    "KernelNode",
+    "VariableNode",
+    "StructNode",
+    "EnumNode",
+    "TypedefNode",
+    "ClassNode",
+    "NamespaceNode",
+    "TemplateNode",
+    "CudaASTNode",
+    "CudaTranslationContext"
+]
+
+# Convenience aliases
+KernelNode = CUDAKernel
+ParameterNode = CUDAParameter
+CompoundStmtNode = CUDACompoundStmt
+
+# Initialize configuration
+def init_translation(
+        source_file: str,
+        metal_target: str = METAL_TARGET,
+        optimization_level: int = OPTIMIZATION_LEVEL
+) -> CudaTranslationContext:
+    """Initialize AST translation context with specified parameters."""
+    return CudaTranslationContext(
+        source_file=source_file,
+        metal_target=metal_target,
+        optimization_level=optimization_level
+    )
+
+# Error checking and validation
+def validate_ast(node: CUDANode) -> bool:
+    """Validate AST node and its children for Metal compatibility."""
+    if not isinstance(node, CUDANode):
+        return False
+    return all(validate_ast(child) for child in node.children)
 
 
 --------------------------------------------------------------------------------

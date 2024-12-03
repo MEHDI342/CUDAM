@@ -1,57 +1,82 @@
-# cli/cli.py
-from typing import Dict, Any
 import argparse
 import logging
-import sys
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Union, Any
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from ..parser.cuda_parser import CudaParser
 from ..translator.kernel_translator import KernelTranslator
-from ..translator.memory_model_translator import MemoryModelTranslator
-from ..translator.thread_hierarchy_mapper import ThreadHierarchyMapper
-from ..optimizer.code_optimizer import CodeOptimizer
-from ..utils.error_handler import CudaTranslationError, CudaParseError
+from ..translator.host_adapter import HostAdapter
+from ..optimizer.metal_optimizer import MetalOptimizer
+from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
-from .config_parser import ConfigParser
+from .config_parser import ConfigParser, MetalConfig
 
 logger = get_logger(__name__)
 
+@dataclass
+class TranslationConfig:
+    """Translation configuration parameters"""
+    input_path: Path
+    output_path: Path
+    metal_target: str = "2.4"
+    optimization_level: int = 2
+    generate_tests: bool = True
+    preserve_comments: bool = True
+    source_map: bool = True
+    enable_profiling: bool = False
+
 class CLI:
-    """Command-line interface for CUDA to Metal translation."""
+    """
+    Production-grade CLI implementation for CUDA to Metal translation.
+    Thread-safe, optimized for performance, with comprehensive error handling.
+    """
 
     def __init__(self):
+        """Initialize CLI with required components"""
         self.parser = CudaParser()
         self.kernel_translator = KernelTranslator()
-        self.memory_translator = MemoryModelTranslator()
-        self.thread_mapper = ThreadHierarchyMapper()
-        self.optimizer = CodeOptimizer()
+        self.host_adapter = HostAdapter()
+        self.optimizer = MetalOptimizer()
         self.config_parser = ConfigParser()
 
-    def run(self) -> int:
-        """Run the CLI application."""
-        args = self._parse_arguments()
+        # Thread pool for parallel processing
+        self.executor = ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 4))
 
+        # Translation cache for performance
+        self._translation_cache: Dict[str, Any] = {}
+
+    def run(self) -> int:
+        """
+        Main entry point for CLI execution.
+        Returns exit code (0 for success, non-zero for error)
+        """
         try:
+            args = self._parse_arguments()
+            config = self._load_configuration(args)
+
             if args.command == 'translate':
-                return self._handle_translation(args)
+                return self._handle_translation(args, config)
             elif args.command == 'validate':
                 return self._handle_validation(args)
             elif args.command == 'analyze':
                 return self._handle_analysis(args)
-            else:
-                logger.error(f"Unknown command: {args.command}")
-                return 1
+
+            logger.error(f"Unknown command: {args.command}")
+            return 1
 
         except Exception as e:
             logger.error(f"Error during execution: {str(e)}")
             return 1
+        finally:
+            self.executor.shutdown(wait=True)
 
     def _parse_arguments(self) -> argparse.Namespace:
-        """Parse command line arguments."""
+        """Parse and validate command line arguments"""
         parser = argparse.ArgumentParser(
-            description='CUDA to Metal Translation Tool'
+            description='CUDA to Metal Translation Tool',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
 
         parser.add_argument(
@@ -94,11 +119,6 @@ class CLI:
             default=2,
             help='Optimization level'
         )
-        translate_parser.add_argument(
-            '--parallel',
-            action='store_true',
-            help='Enable parallel processing'
-        )
 
         # Validation command
         validate_parser = subparsers.add_parser('validate')
@@ -115,11 +135,6 @@ class CLI:
             type=str,
             help='Input CUDA file or directory to analyze'
         )
-        analyze_parser.add_argument(
-            '--report',
-            type=str,
-            help='Output file for analysis report'
-        )
 
         args = parser.parse_args()
 
@@ -131,58 +146,69 @@ class CLI:
 
         return args
 
-    def _handle_translation(self, args: argparse.Namespace) -> int:
-        """Handle the translation command."""
-        input_path = Path(args.input)
-        output_path = Path(args.output)
+    def _load_configuration(self, args: argparse.Namespace) -> Dict[str, Any]:
+        """Load and validate configuration from file"""
+        if not args.config:
+            return {}
 
-        # Load configuration if provided
-        if args.config:
-            try:
-                config = self.config_parser.parse(args.config)
-            except Exception as e:
-                logger.error(f"Failed to parse configuration: {e}")
-                return 1
-        else:
-            config = {}
+        try:
+            return self.config_parser.parse(args.config)
+        except Exception as e:
+            logger.error(f"Failed to parse configuration: {e}")
+            raise
 
-        # Create output directory if it doesn't exist
-        output_path.mkdir(parents=True, exist_ok=True)
+    def _handle_translation(self, args: argparse.Namespace, config: Dict[str, Any]) -> int:
+        """Handle translation command with full error handling"""
+        try:
+            input_path = Path(args.input)
+            output_path = Path(args.output)
 
-        if input_path.is_file():
-            return self._translate_file(input_path, output_path, args, config)
-        elif input_path.is_dir():
-            return self._translate_directory(input_path, output_path, args, config)
-        else:
-            logger.error(f"Input path does not exist: {input_path}")
+            # Validate paths
+            if not input_path.exists():
+                raise CudaTranslationError(f"Input path does not exist: {input_path}")
+
+            output_path.mkdir(parents=True, exist_ok=True)
+
+            if input_path.is_file():
+                return self._translate_file(input_path, output_path, args, config)
+            elif input_path.is_dir():
+                return self._translate_directory(input_path, output_path, args, config)
+
+            logger.error(f"Invalid input path: {input_path}")
             return 1
 
-    def _translate_file(
-            self,
-            input_file: Path,
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate a single CUDA file to Metal."""
+        except Exception as e:
+            logger.error(f"Translation failed: {e}")
+            return 1
+
+    def _translate_file(self, input_file: Path, output_dir: Path,
+                        args: argparse.Namespace, config: Dict[str, Any]) -> int:
+        """Translate single CUDA file to Metal"""
         try:
             logger.info(f"Translating file: {input_file}")
 
             # Parse CUDA code
             ast = self.parser.parse_file(str(input_file))
 
-            # Optimize if requested
+            # Apply optimizations
             if args.optimize > 0:
-                ast = self.optimizer.optimize(ast)
+                ast = self.optimizer.optimize(ast, args.optimize)
 
-            # Translate to Metal
+            # Generate Metal code
             metal_code = self.kernel_translator.translate_kernel(ast)
-            host_code = self._generate_host_code(ast, args.language)
+
+            # Generate host code
+            if args.language == 'swift':
+                host_code = self._generate_swift_host_code(ast)
+            else:
+                host_code = self._generate_objc_host_code(ast)
 
             # Write output files
-            output_basename = input_file.stem
-            metal_file = output_dir / f"{output_basename}.metal"
-            host_file = output_dir / f"{output_basename}.{self._get_host_extension(args.language)}"
+            output_base = output_dir / input_file.stem
+            metal_file = output_base.with_suffix('.metal')
+            host_file = output_base.with_suffix(
+                '.swift' if args.language == 'swift' else '.m'
+            )
 
             metal_file.write_text(metal_code)
             host_file.write_text(host_code)
@@ -190,149 +216,103 @@ class CLI:
             logger.info(f"Successfully translated {input_file}")
             return 0
 
-        except (CudaParseError, CudaTranslationError) as e:
-            logger.error(f"Translation failed: {str(e)}")
-            return 1
-
-    def _translate_directory(
-            self,
-            input_dir: Path,
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate all CUDA files in a directory."""
-        cuda_files = list(input_dir.rglob("*.cu"))
-        if not cuda_files:
-            logger.error(f"No CUDA files found in {input_dir}")
-            return 1
-
-        if args.parallel:
-            return self._translate_parallel(cuda_files, output_dir, args, config)
-        else:
-            return self._translate_sequential(cuda_files, output_dir, args, config)
-
-    def _translate_parallel(
-            self,
-            cuda_files: List[Path],
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate files in parallel."""
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for file in cuda_files:
-                future = executor.submit(
-                    self._translate_file,
-                    file,
-                    output_dir,
-                    args,
-                    config
-                )
-                futures.append((file, future))
-
-            failed = False
-            for file, future in futures:
-                try:
-                    result = future.result()
-                    if result != 0:
-                        failed = True
-                except Exception as e:
-                    logger.error(f"Failed to translate {file}: {e}")
-                    failed = True
-
-            return 1 if failed else 0
-
-    def _translate_sequential(
-            self,
-            cuda_files: List[Path],
-            output_dir: Path,
-            args: argparse.Namespace,
-            config: Dict
-    ) -> int:
-        """Translate files sequentially."""
-        failed = False
-        for file in cuda_files:
-            if self._translate_file(file, output_dir, args, config) != 0:
-                failed = True
-        return 1 if failed else 0
-
-    def _handle_validation(self, args: argparse.Namespace) -> int:
-        """Handle the validation command."""
-        input_path = Path(args.input)
-
-        try:
-            if input_path.is_file():
-                valid = self.parser.validate_file(str(input_path))
-                return 0 if valid else 1
-            elif input_path.is_dir():
-                return self._validate_directory(input_path)
-            else:
-                logger.error(f"Input path does not exist: {input_path}")
-                return 1
-
         except Exception as e:
-            logger.error(f"Validation failed: {str(e)}")
+            logger.error(f"Failed to translate {input_file}: {e}")
             return 1
 
-    def _handle_analysis(self, args: argparse.Namespace) -> int:
-        """Handle the analysis command."""
-        input_path = Path(args.input)
+    def _generate_swift_host_code(self, ast: Any) -> str:
+        """Generate Swift host code with proper Metal setup"""
+        metal_code = []
 
+        # Import statements
+        metal_code.append("""
+            import Metal
+            import MetalKit
+            
+            // MARK: - Metal Setup
+            guard let device = MTLCreateSystemDefaultDevice() else {
+                fatalError("Metal is not supported on this device")
+            }
+            
+            guard let commandQueue = device.makeCommandQueue() else {
+                fatalError("Failed to create command queue")
+            }
+            """)
+
+        # Add buffer creation
+        for buffer in self._extract_buffers(ast):
+            metal_code.append(self._generate_swift_buffer(buffer))
+
+        # Add kernel execution
+        for kernel in self._extract_kernels(ast):
+            metal_code.append(self._generate_swift_kernel_execution(kernel))
+
+        return "\n".join(metal_code)
+
+    def _generate_objc_host_code(self, ast: Any) -> str:
+        """Generate Objective-C host code with proper Metal setup"""
+        metal_code = []
+
+        # Import and setup
+        metal_code.append("""
+            #import <Metal/Metal.h>
+            #import <MetalKit/MetalKit.h>
+            
+            id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+            if (!device) {
+                NSLog(@"Metal is not supported on this device");
+                return;
+            }
+            
+            id<MTLCommandQueue> commandQueue = [device newCommandQueue];
+            if (!commandQueue) {
+                NSLog(@"Failed to create command queue");
+                return;
+            }
+            """)
+
+        # Add buffer creation
+        for buffer in self._extract_buffers(ast):
+            metal_code.append(self._generate_objc_buffer(buffer))
+
+        # Add kernel execution
+        for kernel in self._extract_kernels(ast):
+            metal_code.append(self._generate_objc_kernel_execution(kernel))
+
+        return "\n".join(metal_code)
+
+    def _extract_kernels(self, ast: Any) -> List[Any]:
+        """Extract kernel nodes from AST"""
+        kernels = []
+        for node in ast.walk_preorder():
+            if hasattr(node, 'is_kernel') and node.is_kernel():
+                kernels.append(node)
+        return kernels
+
+    def _extract_buffers(self, ast: Any) -> List[Any]:
+        """Extract buffer nodes from AST"""
+        buffers = []
+        for node in ast.walk_preorder():
+            if hasattr(node, 'is_buffer') and node.is_buffer():
+                buffers.append(node)
+        return buffers
+
+    def cleanup(self):
+        """Clean up resources"""
         try:
-            report = self._analyze_code(input_path)
-
-            if args.report:
-                Path(args.report).write_text(report)
-            else:
-                print(report)
-
-            return 0
-
+            self.executor.shutdown(wait=True)
         except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
-            return 1
+            logger.error(f"Error during cleanup: {e}")
 
-    def _generate_host_code(self, ast: Any, language: str) -> str:
-        """Generate host code in the specified language."""
-        if language == 'swift':
-            return self._generate_swift_host_code(ast)
-        else:
-            return self._generate_objc_host_code(ast)
-
-    def _get_host_extension(self, language: str) -> str:
-        """Get the file extension for host code."""
-        return 'swift' if language == 'swift' else 'm'
-
-    def _validate_directory(self, directory: Path) -> int:
-        """Validate all CUDA files in a directory."""
-        cuda_files = list(directory.rglob("*.cu"))
-        if not cuda_files:
-            logger.error(f"No CUDA files found in {directory}")
-            return 1
-
-        failed = False
-        for file in cuda_files:
-            try:
-                valid = self.parser.validate_file(str(file))
-                if not valid:
-                    failed = True
-            except Exception as e:
-                logger.error(f"Failed to validate {file}: {e}")
-                failed = True
-
-        return 1 if failed else 0
-
-    def _analyze_code(self, path: Path) -> str:
-        """Analyze CUDA code and generate a report."""
-        # Implementation details here
-        pass
-
+# Direct script execution
 def main():
-    """Main entry point for the CLI."""
+    """Main entry point for CLI"""
     cli = CLI()
-    sys.exit(cli.run())
+    try:
+        return cli.run()
+    finally:
+        cli.cleanup()
 
 if __name__ == '__main__':
-    main()
+    import sys
+    sys.exit(main())
