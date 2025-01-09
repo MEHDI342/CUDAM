@@ -4,6 +4,7 @@ Project Structure:
 │   ├── .gitignore
 │   ├── 2.0
 │   ├── backend_content.txt
+│   ├── dummy.py
 │   ├── LICENSE
 │   ├── LICENSE.md
 │   ├── problems.py
@@ -54,11 +55,15 @@ Project Structure:
 │   │   ├── objc_generator.py
 │   │   ├── swift_generator.py
 │   │   ├── __init__.py
+│   ├── gui/
+│   │   ├── main.py
+│   │   ├── __init__.py
 │   ├── native/
 │   │   ├── metal_interop.h
 │   │   ├── metal_interop.mm
 │   ├── Notebooks/
 │   │   ├── simultaneous_validation_v1.ipynb
+│   ├── Nouveau dossier/
 │   ├── optimization/
 │   │   ├── barrier_optimizer.py
 │   │   ├── kernel_optimizer.py
@@ -116,6 +121,8 @@ Project Structure:
 │   │   ├── intrinsic_function_mapper.py
 │   │   ├── thread_hierarchy_mapper.py
 │   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   │   ├── __init__.cpython-312.pyc
 │   ├── utils/
 │   │   ├── cuda_builtin_functions.py
 │   │   ├── cuda_to_metal_type_mapping.py
@@ -130,6 +137,417 @@ Project Structure:
 ================================================================================
 
 Frontend File Contents:
+
+File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\dummy.py
+
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor
+import re
+from typing import Optional, Dict, Any
+import logging
+import sys
+
+# Configure enterprise logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('presentation_generator.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Enterprise configuration constants
+class PresentationConfig:
+    TITLE_FONT_SIZE: int = 44
+    SUBTITLE_FONT_SIZE: int = 32
+    BASE_CONTENT_SIZE: int = 28
+    LEVEL_REDUCTION: int = 2
+    SLIDE_WIDTH: int = 16
+    SLIDE_HEIGHT: int = 9
+
+    # Corporate colors
+    BLACK: RGBColor = RGBColor(0, 0, 0)
+    GRAY: RGBColor = RGBColor(89, 89, 89)
+    ACCENT: RGBColor = RGBColor(0, 112, 192)
+
+class EnterpriseSlideGenerator:
+    """Enterprise-grade PowerPoint slide generation system with comprehensive error handling."""
+
+    def __init__(self) -> None:
+        """Initialize presentation with enterprise configuration."""
+        self.prs = Presentation()
+        self.prs.slide_width = Inches(PresentationConfig.SLIDE_WIDTH)
+        self.prs.slide_height = Inches(PresentationConfig.SLIDE_HEIGHT)
+        logger.info("Initialized EnterpriseSlideGenerator with standard configuration")
+
+    def create_presentation(self, content: str, output_file: str) -> None:
+        """
+        Create complete enterprise presentation with comprehensive error handling.
+
+        Args:
+            content (str): Markdown-formatted presentation content
+            output_file (str): Output file path for the presentation
+        """
+        try:
+            slides_content = content.split('______________\n')
+
+            for i, slide_content in enumerate(slides_content):
+                if i == 0:
+                    self._create_title_slide(slide_content)
+                else:
+                    self._create_content_slide(slide_content)
+
+            self.prs.save(output_file)
+            logger.info(f"Successfully generated presentation: {output_file}")
+
+        except Exception as e:
+            logger.error(f"Error generating presentation: {str(e)}")
+            raise
+
+    def _create_title_slide(self, content: str) -> None:
+        """Create enterprise-formatted title slide with error handling."""
+        try:
+            lines = content.split('\n')
+            title = lines[0].strip('# ')
+            subtitle = lines[1].strip('## ')
+            sub_subtitle = lines[2].strip('### ')
+
+            slide = self.prs.slides.add_slide(self.prs.slide_layouts[0])
+            title_shape = slide.shapes.title
+            subtitle_shape = slide.placeholders[1]
+
+            title_shape.text = title
+            subtitle_shape.text = f"{subtitle}\n{sub_subtitle}"
+
+            self._format_title_text(title_shape.text_frame)
+            self._format_subtitle_text(subtitle_shape.text_frame)
+
+        except Exception as e:
+            logger.error(f"Error creating title slide: {str(e)}")
+            raise
+
+    def _create_content_slide(self, content: str) -> None:
+        """Create enterprise-formatted content slide with comprehensive error handling."""
+        try:
+            slide = self.prs.slides.add_slide(self.prs.slide_layouts[1])
+            shapes = slide.shapes
+
+            sections = content.split('\n\n')
+            if not sections:
+                raise ValueError("Invalid slide content: No sections found")
+
+            title = sections[0].strip('# ')
+            title_shape = shapes.title
+            title_shape.text = title
+            self._format_title_text(title_shape.text_frame)
+
+            body_shape = shapes.placeholders[1]
+            tf = body_shape.text_frame
+            tf.clear()
+
+            for section in sections[1:]:
+                self._add_formatted_content(tf, section)
+
+        except Exception as e:
+            logger.error(f"Error creating content slide: {str(e)}")
+            raise
+
+    def _format_title_text(self, frame) -> None:
+        """Apply enterprise title formatting with error handling."""
+        try:
+            p = frame.paragraphs[0]
+            p.font.size = Pt(PresentationConfig.TITLE_FONT_SIZE)
+            p.font.bold = True
+            p.font.color.rgb = PresentationConfig.BLACK
+        except Exception as e:
+            logger.error(f"Error formatting title text: {str(e)}")
+            raise
+
+    def _format_subtitle_text(self, frame) -> None:
+        """Apply enterprise subtitle formatting with error handling."""
+        try:
+            p = frame.paragraphs[0]
+            p.font.size = Pt(PresentationConfig.SUBTITLE_FONT_SIZE)
+            p.font.color.rgb = PresentationConfig.GRAY
+        except Exception as e:
+            logger.error(f"Error formatting subtitle text: {str(e)}")
+            raise
+
+    def _add_formatted_content(self, tf, content: str) -> None:
+        """Add formatted content with proper hierarchy and error handling."""
+        try:
+            lines = content.strip().split('\n')
+
+            for line in lines:
+                if not line.strip():
+                    continue
+
+                level = self._determine_level(line)
+                clean_line = self._clean_line(line)
+
+                p = tf.add_paragraph()
+                p.text = clean_line
+                p.level = level
+
+                self._format_paragraph(p, level)
+
+        except Exception as e:
+            logger.error(f"Error adding formatted content: {str(e)}")
+            raise
+
+    def _determine_level(self, line: str) -> int:
+        """Determine content hierarchy level with validation."""
+        try:
+            if line.startswith('o'):
+                return 2
+            if line.startswith('•'):
+                return 1
+            return 0
+        except Exception as e:
+            logger.error(f"Error determining content level: {str(e)}")
+            raise
+
+    def _clean_line(self, line: str) -> str:
+        """Clean line formatting markers with validation."""
+        try:
+            return line.lstrip('o• ').strip()
+        except Exception as e:
+            logger.error(f"Error cleaning line: {str(e)}")
+            raise
+
+    def _format_paragraph(self, p, level: int) -> None:
+        """Apply enterprise paragraph formatting with error handling."""
+        try:
+            p.font.size = Pt(PresentationConfig.BASE_CONTENT_SIZE - (level * PresentationConfig.LEVEL_REDUCTION))
+            p.font.color.rgb = PresentationConfig.BLACK
+            if level == 0:
+                p.font.bold = True
+        except Exception as e:
+            logger.error(f"Error formatting paragraph: {str(e)}")
+            raise
+
+def create_presentation(content: str, output_file: str) -> None:
+    """
+    Create enterprise presentation with comprehensive error handling.
+
+    Args:
+        content (str): Markdown-formatted presentation content
+        output_file (str): Output file path for the presentation
+    """
+    try:
+        generator = EnterpriseSlideGenerator()
+        generator.create_presentation(content, output_file)
+    except Exception as e:
+        logger.error(f"Error in presentation creation: {str(e)}")
+        raise
+
+def main():
+    """Main execution with complete content implementation."""
+    markdown_content = """# L'Intelligence Artificielle : Solutions et Applications
+## Analyse d'Implémentation 
+### SOCOBAT - Transformation Digitale 2024
+
+______________
+
+# Domaines d’application de l’IA : Exemples spécifiques
+## Étude de Marché sur l’Utilisation de l’IA dans l’Assistance Client
+
+### Exemples Spécifiques
+
+• Exemple 1 : Société Générale
+o Utilisation de chatbots IA pour répondre aux demandes des clients en ligne.
+o Résultat : réduction significative des délais de réponse, amélioration de la satisfaction client grâce à des réponses rapides et précises.
+
+• Exemple 2 : Amazon
+o Intégration d’assistants virtuels pour gérer les interactions client.
+o Résultat : personnalisation accrue des échanges et réduction des coûts opérationnels en automatisant les requêtes les plus courantes.
+
+______________
+
+# Production
+## Technologies Avancées
+
+### Exemples de Production
+
+• Exemple 1 : Bouygues Construction
+o Utilisation de l’IA pour la gestion des chantiers, notamment pour surveiller les délais et optimiser les ressources.
+o Résultat : réduction des retards dans les projets et meilleure coordination des équipes.
+
+• Exemple 2 : VESTACK
+o Intégration d’algorithmes prédictifs pour optimiser les processus de construction écologique.
+o Résultat : diminution des coûts énergétiques et des émissions de CO₂ grâce à des simulations en temps réel.
+
+______________
+
+# Finance et Comptabilité
+## Optimisation des Processus
+
+### Exemples en Finance
+
+• Exemple 1 : Cogedis
+o Automatisation des processus de comptabilité grâce à l’IA.
+o Résultat : amélioration de 30 % de l’efficacité des opérations et réduction des erreurs dans les calculs financiers.
+
+• Exemple 2 : ENGIE
+o Analyse prédictive des flux financiers pour anticiper les tendances du marché.
+o Résultat : prise de décision plus rapide et fiable grâce à une meilleure visibilité des données financières.
+
+______________
+
+# Gestion d’approvisionnement
+## Solutions Logistiques
+
+### Exemple en Gestion d’Approvisionnement
+
+• Exemple unique : Suffolk Construction
+o Mise en place d’algorithmes d’IA pour prévoir les besoins en matériaux et optimiser les délais de livraison.
+o Résultat : réduction des coûts logistiques et anticipation des pénuries grâce à des données en temps réel.
+
+______________
+
+# Sécurité des employés
+## Surveillance Intelligente
+
+### Exemples en Sécurité
+
+• Exemple 1 : IBM
+o Déploiement de systèmes IA pour surveiller les comportements et détecter les risques sur les lieux de travail.
+o Résultat : réduction des incidents de sécurité et meilleure conformité aux normes.
+
+• Exemple 2 : Siemens
+o Utilisation de l’IA pour analyser les données des équipements et prévenir les défaillances.
+o Résultat : diminution des accidents liés à l’utilisation de machines défectueuses.
+
+______________
+
+# Startups dans la région de Socobat : Présentation et témoignages
+## Écosystème Local
+
+### Finance et Comptabilité : Yooz (Lyon)
+
+• Présentation :
+Yooz se concentre sur l’automatisation comptable, simplifiant la gestion des factures.
+o Témoignage :
+Brico Privé a constaté une transparence accrue dans ses processus grâce à Yooz, améliorant les relations avec les fournisseurs.
+
+### Logistique et Gestion de la Chaîne d'Approvisionnement
+
+• Kardinal (Lyon) :
+Optimisation des tournées de livraison à l’aide d’algorithmes avancés.
+o Témoignage :
+DPD France a observé une augmentation de 4 % dans le respect des créneaux horaires grâce aux solutions Kardinal.
+
+• Aitenders (Saint-Étienne) :
+Automatisation des appels d’offres pour réduire les tâches manuelles et améliorer les sélections.
+o Témoignage :
+Une entreprise cliente a réduit de 90 % les opportunités non pertinentes, se concentrant sur les offres qualifiées.
+
+### Service Client, Sécurité et Production : Wevioo (Lyon)
+
+Wevioo accompagne les entreprises dans leur transformation digitale, en optimisant la production, la maintenance prédictive et la sécurité des employés grâce à des solutions basées sur l’intelligence artificielle.
+o Témoignage :
+Une entreprise industrielle a collaboré avec Wevioo pour intégrer des systèmes de maintenance prédictive, permettant de réduire les coûts et d’améliorer la productivité globale.
+
+______________
+
+# L’impact de l’intégration de l’IA : Pourcentages clés
+## Métriques Clés
+
+### Finance et Comptabilité
+
+• Réduction des coûts administratifs : 20-30 %.
+• Amélioration de la productivité : 25 %.
+
+### Logistique et Gestion de la chaîne d'approvisionnement
+
+• Réduction des coûts logistiques : 15-20 %.
+• Amélioration de l’efficacité des chaînes d’approvisionnement : 20 %.
+
+### Service Client et Assistance
+
+• Réduction des coûts de service client : 30 %.
+• Temps de réponse amélioré : 50 %.
+
+### Sécurité des Employés
+
+• Réduction des incidents liés à la sécurité : 10-15 %.
+• Amélioration de la conformité : 20 %.
+
+### Production
+
+• Réduction des coûts de maintenance : 15-30 %.
+• Amélioration de la productivité : 20 %.
+
+______________
+
+# Défis de l’intégration de l’IA dans l’entreprise et solutions
+## Obstacles et Solutions
+
+### Défi 1 : Coût élevé de mise en œuvre
+
+• Solution :
+o Déployer des projets pilotes avant un déploiement global.
+o Rechercher des subventions et aides publiques.
+
+### Défi 2 : Résistance au changement interne
+
+• Solution :
+o Impliquer les employés dès le début.
+o Proposer des formations adaptées.
+
+### Défi 3 : Données insuffisantes ou de mauvaise qualité
+
+• Solution :
+o Mettre en place un processus de collecte et de nettoyage des données.
+o Centraliser les données pour une meilleure accessibilité.
+
+### Défi 4 : Complexité technologique
+
+• Solution :
+o Collaborer avec des experts en IA.
+o Simplifier les processus pour faciliter l’adoption.
+
+### Défi 5 : Risques éthiques et réglementaires
+
+• Solution :
+o Garantir la transparence des algorithmes.
+o Respecter les réglementations, comme le RGPD.
+
+### Défi 6 : Temps nécessaire pour constater des résultats
+
+• Solution :
+o Fixer des attentes réalistes et des objectifs intermédiaires.
+o Mesurer les résultats par des indicateurs de performance.
+
+### Défi 7 : Cybersécurité
+
+• Solution :
+o Investir dans des outils de sécurité avancés.
+o Former les équipes aux bonnes pratiques 
+"""
+
+    try:
+        create_presentation(markdown_content, 'SOCOBAT_IA_Implementation.pptx')
+        logger.info("Presentation generation completed successfully")
+    except Exception as e:
+        logger.error(f"Fatal error in presentation generation: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    main()
+
+Class: ('PresentationConfig', '')
+--------------------------------------------------------------------------------
+
+Class: ('EnterpriseSlideGenerator', '')
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\problems.py
 
@@ -342,7 +760,13 @@ except Exception as e:
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\__init__.py
 
+from .translator import CudaTranslator
+from .optimizer import MetalOptimizer
+from .parser import CudaParser, ast_nodes
+from .utils import logger
 
+__version__ = '1.0.0'
+__all__ = ['CudaTranslator', 'MetalOptimizer', 'CudaParser']
 
 --------------------------------------------------------------------------------
 
@@ -3087,6 +3511,558 @@ File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\generator\__init__.py
 
 --------------------------------------------------------------------------------
 
+File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\gui\main.py
+
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QSplitter,
+                             QTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog,
+                             QTreeView, QLabel, QProgressBar, QStatusBar, QMenuBar, QMenu)
+from PyQt6.QtGui import QAction, QFont, QFontMetrics, QStandardItemModel, QStandardItem
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
+import sys
+import os
+from pathlib import Path
+from typing import Optional, Dict, Any
+
+from translator import CudaTranslator
+from optimizer import MetalOptimizer
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+class TranslationWorker(QThread):
+    """Handles asynchronous CUDA to Metal translation."""
+    finished = pyqtSignal(dict)
+    progress = pyqtSignal(int)
+    error = pyqtSignal(str)
+
+    def __init__(self, cuda_code: str, optimization_level: int):
+        super().__init__()
+        self.cuda_code = cuda_code
+        self.optimization_level = optimization_level
+        self.translator = CudaTranslator()
+        self.optimizer = MetalOptimizer()
+
+    def run(self):
+        try:
+            # Translation process with progress updates
+            self.progress.emit(20)
+            ast = self.translator.parse_cuda(self.cuda_code)
+
+            self.progress.emit(40)
+            metal_code = self.translator.translate_to_metal(ast)
+
+            self.progress.emit(60)
+            optimized_code = self.optimizer.optimize_metal_code(
+                metal_code,
+                self.optimization_level
+            )
+
+            self.progress.emit(80)
+            performance_metrics = self.optimizer.analyze_performance(optimized_code)
+
+            self.progress.emit(100)
+            self.finished.emit({
+                'metal_code': optimized_code,
+                'metrics': performance_metrics
+            })
+        except Exception as e:
+            logger.error(f"Translation error: {str(e)}")
+            self.error.emit(str(e))
+
+class CUDAMMainWindow(QMainWindow):
+    """Main window for the CUDAM GUI application."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("CUDAM - CUDA to Metal Translator")
+        self.setMinimumSize(1200, 800)
+        self.current_file: Optional[Path] = None
+        self.translation_worker: Optional[TranslationWorker] = None
+
+        self._setup_ui()
+        self._setup_menubar()
+        self._setup_statusbar()
+        self._setup_shortcuts()
+        self._apply_styles()
+
+    def _setup_ui(self):
+        """Initialize the main UI components."""
+        # Main layout
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        layout = QVBoxLayout(main_widget)
+
+        # Create main splitter
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(self.main_splitter)
+
+        # Project explorer
+        self.project_tree = QTreeView()
+        self.project_model = QStandardItemModel()
+        self.project_tree.setModel(self.project_model)
+        self.project_tree.setHeaderHidden(True)
+        self.main_splitter.addWidget(self.project_tree)
+
+        # Editor section
+        editor_widget = QWidget()
+        editor_layout = QVBoxLayout(editor_widget)
+
+        # Editor tabs
+        self.editor_tabs = QTabWidget()
+        self.cuda_editor = QTextEdit()
+        self.metal_editor = QTextEdit()
+        self.cuda_editor.setFont(QFont("SF Mono", 12))
+        self.metal_editor.setFont(QFont("SF Mono", 12))
+
+        self.editor_tabs.addTab(self.cuda_editor, "CUDA Source")
+        self.editor_tabs.addTab(self.metal_editor, "Metal Output")
+        editor_layout.addWidget(self.editor_tabs)
+
+        # Control panel
+        control_panel = QWidget()
+        control_layout = QHBoxLayout(control_panel)
+
+        self.translate_button = QPushButton("Translate")
+        self.translate_button.clicked.connect(self.start_translation)
+        self.optimize_button = QPushButton("Optimize")
+        self.optimize_button.clicked.connect(self.optimize_code)
+
+        control_layout.addWidget(self.translate_button)
+        control_layout.addWidget(self.optimize_button)
+        editor_layout.addWidget(control_panel)
+
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        editor_layout.addWidget(self.progress_bar)
+
+        self.main_splitter.addWidget(editor_widget)
+
+        # Performance metrics panel
+        metrics_widget = QWidget()
+        metrics_layout = QVBoxLayout(metrics_widget)
+        metrics_layout.addWidget(QLabel("Performance Metrics"))
+        self.metrics_view = QTextEdit()
+        self.metrics_view.setReadOnly(True)
+        metrics_layout.addWidget(self.metrics_view)
+
+        self.main_splitter.addWidget(metrics_widget)
+
+        # Set splitter proportions
+        self.main_splitter.setStretchFactor(0, 1)  # Project tree
+        self.main_splitter.setStretchFactor(1, 3)  # Editor
+        self.main_splitter.setStretchFactor(2, 1)  # Metrics
+
+    def _setup_menubar(self):
+        """Setup the application menu bar."""
+        menubar = self.menuBar()
+
+        # File menu
+        file_menu = menubar.addMenu("File")
+
+        new_action = QAction("New", self)
+        new_action.setShortcut("Cmd+N")
+        new_action.triggered.connect(self.new_file)
+
+        open_action = QAction("Open...", self)
+        open_action.setShortcut("Cmd+O")
+        open_action.triggered.connect(self.open_file)
+
+        save_action = QAction("Save", self)
+        save_action.setShortcut("Cmd+S")
+        save_action.triggered.connect(self.save_file)
+
+        file_menu.addAction(new_action)
+        file_menu.addAction(open_action)
+        file_menu.addAction(save_action)
+
+        # Edit menu
+        edit_menu = menubar.addMenu("Edit")
+
+        undo_action = QAction("Undo", self)
+        undo_action.setShortcut("Cmd+Z")
+        undo_action.triggered.connect(self.cuda_editor.undo)
+
+        redo_action = QAction("Redo", self)
+        redo_action.setShortcut("Cmd+Shift+Z")
+        redo_action.triggered.connect(self.cuda_editor.redo)
+
+        edit_menu.addAction(undo_action)
+        edit_menu.addAction(redo_action)
+
+        # Translation menu
+        translation_menu = menubar.addMenu("Translation")
+
+        translate_action = QAction("Translate", self)
+        translate_action.setShortcut("Cmd+T")
+        translate_action.triggered.connect(self.start_translation)
+
+        optimize_action = QAction("Optimize", self)
+        optimize_action.setShortcut("Cmd+Shift+O")
+        optimize_action.triggered.connect(self.optimize_code)
+
+        translation_menu.addAction(translate_action)
+        translation_menu.addAction(optimize_action)
+
+    def _setup_statusbar(self):
+        """Setup the status bar."""
+        self.statusbar = QStatusBar()
+        self.setStatusBar(self.statusbar)
+
+    def _setup_shortcuts(self):
+        """Setup additional keyboard shortcuts."""
+        # Implementation of keyboard shortcuts
+        pass
+
+    def _apply_styles(self):
+        """Apply macOS-style CSS styling."""
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #ffffff;
+            }
+            QTextEdit {
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                background-color: #ffffff;
+                selection-background-color: #b2d7ff;
+            }
+            QPushButton {
+                background-color: #0066cc;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #0052cc;
+            }
+            QPushButton:pressed {
+                background-color: #004099;
+            }
+            QProgressBar {
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #0066cc;
+                border-radius: 3px;
+            }
+        """)
+
+    def start_translation(self):
+        """Start the CUDA to Metal translation process."""
+        cuda_code = self.cuda_editor.toPlainText()
+        if not cuda_code.strip():
+            self.statusbar.showMessage("No CUDA code to translate", 3000)
+            return
+
+        self.translate_button.setEnabled(False)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+
+        self.translation_worker = TranslationWorker(cuda_code, optimization_level=2)
+        self.translation_worker.finished.connect(self._handle_translation_finished)
+        self.translation_worker.progress.connect(self.progress_bar.setValue)
+        self.translation_worker.error.connect(self._handle_translation_error)
+        self.translation_worker.start()
+
+    def _handle_translation_finished(self, result: Dict[str, Any]):
+        """Handle completed translation."""
+        self.metal_editor.setPlainText(result['metal_code'])
+        self.metrics_view.setPlainText(
+            "Performance Metrics:\n" +
+            "\n".join(f"{k}: {v}" for k, v in result['metrics'].items())
+        )
+
+        self.translate_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.statusbar.showMessage("Translation completed successfully", 3000)
+
+    def _handle_translation_error(self, error_msg: str):
+        """Handle translation errors."""
+        self.statusbar.showMessage(f"Error: {error_msg}", 5000)
+        self.translate_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+
+    def optimize_code(self):
+        """Optimize the generated Metal code."""
+        metal_code = self.metal_editor.toPlainText()
+        if not metal_code.strip():
+            self.statusbar.showMessage("No Metal code to optimize", 3000)
+            return
+
+        try:
+            optimizer = MetalOptimizer()
+            optimized_code = optimizer.optimize_metal_code(metal_code, optimization_level=3)
+            self.metal_editor.setPlainText(optimized_code)
+            self.statusbar.showMessage("Optimization completed", 3000)
+        except Exception as e:
+            self.statusbar.showMessage(f"Optimization error: {str(e)}", 5000)
+
+    def new_file(self):
+        """Create a new file."""
+        self.current_file = None
+        self.cuda_editor.clear()
+        self.metal_editor.clear()
+        self.statusbar.showMessage("New file created", 3000)
+
+    def open_file(self):
+        """Open a CUDA source file."""
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open CUDA File",
+            "",
+            "CUDA Files (*.cu *.cuh);;All Files (*.*)"
+        )
+
+        if filename:
+            try:
+                with open(filename, 'r') as f:
+                    self.cuda_editor.setPlainText(f.read())
+                self.current_file = Path(filename)
+                self.statusbar.showMessage(f"Opened {filename}", 3000)
+            except Exception as e:
+                self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
+
+    def save_file(self):
+        """Save the current file."""
+        if not self.current_file:
+            filename, _ = QFileDialog.getSaveFileName(
+                self,
+                "Save CUDA File",
+                "",
+                "CUDA Files (*.cu);;Metal Files (*.metal);;All Files (*.*)"
+            )
+            if not filename:
+                return
+            self.current_file = Path(filename)
+
+        try:
+            with open(self.current_file, 'w') as f:
+                if self.current_file.suffix == '.cu':
+                    f.write(self.cuda_editor.toPlainText())
+                elif self.current_file.suffix == '.metal':
+                    f.write(self.metal_editor.toPlainText())
+            self.statusbar.showMessage(f"Saved {self.current_file}", 3000)
+        except Exception as e:
+            self.statusbar.showMessage(f"Error saving file: {str(e)}", 5000)
+
+def main():
+    """Main entry point for the CUDAM GUI application."""
+    app = QApplication(sys.argv)
+
+    # Set application-wide attributes
+    app.setApplicationName("CUDAM")
+    app.setApplicationVersion("1.0.0")
+    app.setOrganizationName("CUDAM")
+    app.setOrganizationDomain("cudam.dev")
+
+    window = CUDAMMainWindow()
+    window.show()
+
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()
+Class: ('TranslationWorker', '(QThread)')
+--------------------------------------------------------------------------------
+  Method: get()
+  Method: get(main_widget)
+  Method: get(self.main_splitter)
+  Method: get(self.project_tree)
+  Method: get()
+  Method: get()
+  Method: get(self.editor_tabs)
+  Method: get()
+  Method: get(self.translate_button)
+  Method: get(self.optimize_button)
+  Method: get(control_panel)
+  Method: get(self.progress_bar)
+  Method: get(editor_widget)
+  Method: get()
+  Method: get(QLabel("Performance Metrics")
+  Method: get(self.metrics_view)
+  Method: get(metrics_widget)
+
+Class: ('CUDAMMainWindow', '(QMainWindow)')
+--------------------------------------------------------------------------------
+  Method: get()
+  Method: get(main_widget)
+  Method: get(self.main_splitter)
+  Method: get(self.project_tree)
+  Method: get()
+  Method: get()
+  Method: get(self.editor_tabs)
+  Method: get()
+  Method: get(self.translate_button)
+  Method: get(self.optimize_button)
+  Method: get(control_panel)
+  Method: get(self.progress_bar)
+  Method: get(editor_widget)
+  Method: get()
+  Method: get(QLabel("Performance Metrics")
+  Method: get(self.metrics_view)
+  Method: get(metrics_widget)
+
+
+--------------------------------------------------------------------------------
+
+File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\gui\__init__.py
+
+# CUDAM/gui/__init__.py
+
+"""
+CUDAM GUI Module
+Production-ready graphical interface for CUDA to Metal translation.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+# Add CUDAM root to Python path
+CUDAM_ROOT = Path(__file__).parent.parent
+if str(CUDAM_ROOT) not in sys.path:
+    sys.path.append(str(CUDAM_ROOT))
+
+# Core CUDAM components
+from ..translator.host_adapter import HostAdapter
+from ..translator.kernel_translator import KernelTranslator
+from ..translator.cudnn_mapper import CudnnMapper
+from ..translator.thread_hierarchy_mapper import ThreadHierarchyMapper
+
+# Optimization components
+from ..optimizer.unified_optimizer_metal import UnifiedMetalOptimizer
+from ..optimization.memory_optimizer import MemoryOptimizer
+from ..optimization.kernel_optimizer import KernelOptimizer
+from ..optimization.barrier_optimizer import BarrierOptimizer
+
+# Parser components
+from ..parser.cuda_parser import CudaParser
+from ..parser.cuda_syntax_validator import CudaSyntaxValidator
+from ..parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAParameter, CUDAType, CUDAQualifier,
+    CUDASharedMemory, CUDAThreadIdx, CUDABarrier
+)
+
+# Utility components
+from ..utils.error_handler import (
+    CudaError, CudaParseError, CudaTranslationError,
+    CudaTypeError, CudaNotSupportedError
+)
+from ..utils.logger import get_logger
+from ..utils.metal_equivalents import get_metal_equivalent
+from ..utils.mapping_tables import MetalMappingRegistry
+
+# Initialize logger
+logger = get_logger(__name__)
+
+class CudaTranslator:
+    """
+    Unified CUDA to Metal translation interface.
+    Provides high-level access to translation functionality.
+    """
+
+    def __init__(self):
+        self.parser = CudaParser()
+        self.validator = CudaSyntaxValidator()
+        self.kernel_translator = KernelTranslator()
+        self.host_adapter = HostAdapter(self.kernel_translator, None)  # Initialize properly
+        self.optimizer = UnifiedMetalOptimizer()
+        self.mapping_registry = MetalMappingRegistry()
+
+    def parse_cuda(self, cuda_code: str) -> CUDANode:
+        """Parse CUDA code into AST."""
+        try:
+            return self.parser.parse_string(cuda_code)
+        except CudaParseError as e:
+            logger.error(f"Parsing error: {e}")
+            raise
+
+    def translate_to_metal(self, ast: CUDANode) -> str:
+        """Translate CUDA AST to Metal code."""
+        try:
+            # Validate AST
+            validation_result = self.validator.validate_ast(ast)
+            if not validation_result[0]:
+                raise CudaTranslationError(f"Validation failed: {validation_result[1]}")
+
+            # Translate kernels
+            metal_code = self.kernel_translator.translate_kernel(ast)
+
+            # Adapt host code
+            metal_code = self.host_adapter.translate_host_code(metal_code)
+
+            return metal_code
+
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            raise CudaTranslationError(str(e))
+
+    def optimize_metal_code(self, metal_code: str, optimization_level: int = 2) -> str:
+        """Optimize generated Metal code."""
+        try:
+            return self.optimizer.optimize(metal_code, optimization_level)
+        except Exception as e:
+            logger.error(f"Optimization error: {e}")
+            raise
+
+# GUI-specific components
+from .main import CUDAMMainWindow
+from .widgets.editor import CodeEditor
+from .widgets.project import ProjectExplorer
+from .widgets.metrics import PerformanceMetrics
+
+# Version information
+__version__ = "1.0.0"
+__author__ = "Your Name"
+__email__ = "your.email@example.com"
+
+# Default configuration
+DEFAULT_CONFIG = {
+    'theme': 'light',
+    'font_size': 12,
+    'tab_size': 4,
+    'auto_indent': True,
+    'show_line_numbers': True,
+    'highlight_current_line': True,
+    'optimization_level': 2,
+}
+
+def initialize_gui():
+    """Initialize GUI components and resources."""
+    # Set up resource paths
+    resource_path = Path(__file__).parent / 'resources'
+    os.environ['CUDAM_RESOURCE_PATH'] = str(resource_path)
+
+    # Initialize logging
+    logger.info("Initializing CUDAM GUI")
+
+    # Return initialized components
+    return {
+        'main_window': CUDAMMainWindow,
+        'translator': CudaTranslator(),
+        'config': DEFAULT_CONFIG
+    }
+
+# Expose public interface
+__all__ = [
+    'CUDAMMainWindow',
+    'CudaTranslator',
+    'initialize_gui',
+    'CodeEditor',
+    'ProjectExplorer',
+    'PerformanceMetrics',
+    '__version__',
+]
+Class: ('CudaTranslator', '')
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\native\metal_interop.h
 
 import Metal
@@ -4187,2372 +5163,415 @@ Class: ('UnifiedMetalOptimizer', '')
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\parser\ast.py
 
+# a complete and utter bullshit
+
 from typing import List, Dict, Any, Optional, Union, Set, Tuple
-from enum import Enum
+from dataclasses import dataclass, field
+from enum import Enum, auto
 import logging
+from pathlib import Path
+import json
+import math
 
 logger = logging.getLogger(__name__)
 
-CUDA_TO_METAL_TYPE_MAP = {
-    # Basic types
-    'float': 'float',
-    'double': 'float',  # Metal doesn't support double
-    'int': 'int32_t',
-    'unsigned int': 'uint32_t',
-    'long long': 'int64_t',
-    'unsigned long long': 'uint64_t',
-    'char': 'int8_t',
-    'unsigned char': 'uint8_t',
-    'short': 'int16_t',
-    'unsigned short': 'uint16_t',
-    'bool': 'bool',
-    'void': 'void',
+# Import Metal translation mappings
+from ..utils.mapping_tables import (
+    CUDA_TO_METAL_TYPE_MAP,
+    CUDA_TO_METAL_OPERATORS,
+    CUDA_TO_METAL_FUNCTION_MAP,
+    METAL_SPECIFIC_LIMITATIONS
+)
 
-    # Vector types
-    'float2': 'float2',
-    'float3': 'float3',
-    'float4': 'float4',
-    'int2': 'int2',
-    'int3': 'int3',
-    'int4': 'int4',
-    'uint2': 'uint2',
-    'uint3': 'uint3',
-    'uint4': 'uint4',
+class NodeType(Enum):
+    """AST node types with complete Metal translation support"""
+    TRANSLATION_UNIT = auto()
+    FUNCTION = auto()
+    KERNEL = auto()
+    VARIABLE = auto()
+    EXPRESSION = auto()
+    STATEMENT = auto()
+    COMPOUND = auto()
+    TYPE = auto()
 
-    # CUDA-specific types
-    'dim3': 'uint3',
-    'size_t': 'size_t',
-    'cudaError_t': 'int32_t',
-}
+@dataclass
+class SourceLocation:
+    """Source code location tracking"""
+    file: str
+    line: int
+    column: int
+    offset: Optional[int] = None
 
-CUDA_TO_METAL_OPERATORS = {
-    # Arithmetic
-    '+': '+',
-    '-': '-',
-    '*': '*',
-    '/': '/',
-    '%': '%',
+@dataclass
+class MetalOptimizationMetadata:
+    """Comprehensive Metal optimization metadata"""
+    vectorizable: bool = False
+    coalesced_access: bool = False
+    requires_simd_group: bool = False
+    threadgroup_memory_size: int = 0
+    atomic_operations: List[str] = field(default_factory=list)
+    barrier_points: List[Dict[str, Any]] = field(default_factory=list)
+    simd_width: int = 32
+    compute_occupancy: float = 0.0
+    memory_access_pattern: str = "random"
+    thread_divergence: bool = False
+    bank_conflict_risk: bool = False
 
-    # Bitwise
-    '&': '&',
-    '|': '|',
-    '^': '^',
-    '<<': '<<',
-    '>>': '>>',
-    '~': '~',
+@dataclass
+class MetalResourceLimits:
+    """Metal hardware and API limitations"""
+    max_threads_per_threadgroup: int = 1024
+    max_threadgroups_per_grid: Tuple[int, int, int] = (2048, 2048, 2048)
+    max_total_threadgroup_memory: int = 32768  # 32KB
+    max_buffer_size: int = 1 << 30  # 1GB
+    simd_group_size: int = 32
+    max_total_threads_per_grid: int = 1 << 32
+    max_texture_size: int = 16384
 
-    # Logical
-    '&&': '&&',
-    '||': '||',
-    '!': '!',
-
-    # Comparison
-    '==': '==',
-    '!=': '!=',
-    '<': '<',
-    '>': '>',
-    '<=': '<=',
-    '>=': '>=',
-
-    # Assignment
-    '=': '=',
-    '+=': '+=',
-    '-=': '-=',
-    '*=': '*=',
-    '/=': '/=',
-    '%=': '%=',
-    '&=': '&=',
-    '|=': '|=',
-    '^=': '^=',
-    '<<=': '<<=',
-    '>>=': '>>=',
-}
-
-CUDA_TO_METAL_FUNCTION_MAP = {
-    # Math functions
-    'sin': 'metal::sin',
-    'cos': 'metal::cos',
-    'tan': 'metal::tan',
-    'asin': 'metal::asin',
-    'acos': 'metal::acos',
-    'atan': 'metal::atan',
-    'sinh': 'metal::sinh',
-    'cosh': 'metal::cosh',
-    'tanh': 'metal::tanh',
-    'exp': 'metal::exp',
-    'exp2': 'metal::exp2',
-    'log': 'metal::log',
-    'log2': 'metal::log2',
-    'log10': 'metal::log10',
-    'pow': 'metal::pow',
-    'sqrt': 'metal::sqrt',
-    'rsqrt': 'metal::rsqrt',
-    'fabs': 'metal::abs',
-    'floor': 'metal::floor',
-    'ceil': 'metal::ceil',
-    'fmin': 'metal::min',
-    'fmax': 'metal::max',
-
-    # Synchronization
-    '__syncthreads': 'threadgroup_barrier(mem_flags::mem_device)',
-    '__threadfence': 'threadgroup_barrier(mem_flags::mem_device)',
-    '__threadfence_block': 'threadgroup_barrier(mem_flags::mem_threadgroup)',
-
-    # Atomic operations
-    'atomicAdd': 'atomic_fetch_add_explicit',
-    'atomicSub': 'atomic_fetch_sub_explicit',
-    'atomicExch': 'atomic_exchange_explicit',
-    'atomicMin': 'atomic_fetch_min_explicit',
-    'atomicMax': 'atomic_fetch_max_explicit',
-    'atomicAnd': 'atomic_fetch_and_explicit',
-    'atomicOr': 'atomic_fetch_or_explicit',
-    'atomicXor': 'atomic_fetch_xor_explicit',
-    'atomicCAS': 'atomic_compare_exchange_weak_explicit',
-}
-
-from typing import List, Dict, Any, Optional, Set, Tuple
-import logging
-
-logger = logging.getLogger(__name__)
+@dataclass
+class ValidationError:
+    """Validation error details"""
+    error_type: str
+    message: str
+    location: Optional[SourceLocation] = None
+    severity: str = "error"
 
 class CudaASTNode:
-    """Base class for all AST nodes with enhanced Metal support"""
-    def __init__(self, kind: str, spelling: Optional[str] = None, type: Optional[str] = None):
-        self.kind = kind
+    """Production-ready AST node base class for CUDA to Metal translation"""
+    
+    def __init__(self,
+                 node_type: NodeType,
+                 spelling: Optional[str] = None,
+                 source_type: Optional[str] = None,
+                 location: Optional[SourceLocation] = None):
+                 
+        # Core attributes
+        self.node_type = node_type
         self.spelling = spelling
-        self.type = type
+        self.source_type = source_type
+        self.location = location
         self.children: List['CudaASTNode'] = []
         self.parent: Optional['CudaASTNode'] = None
-        self.source_location: Optional[Dict[str, int]] = None
-
-        # Metal-specific attributes
+        
+        # Metal translation attributes
         self.metal_translation: Optional[str] = None
         self.metal_type: Optional[str] = None
-        self.metal_limitations: Dict[str, Any] = {}
-        self.optimization_metadata: Dict[str, Any] = {
-            'vectorizable': False,
-            'coalesced_access': False,
-            'requires_simd_group': False,
-            'threadgroup_memory_size': 0,
-            'atomic_operations': [],
-            'barrier_points': []
-        }
-
+        self.metal_qualifiers: List[str] = []
+        self.optimization_metadata = MetalOptimizationMetadata()
+        self.resource_requirements = MetalResourceLimits()
+        
+        # Validation and analysis state
+        self.validation_errors: List[ValidationError] = []
+        self.translation_warnings: List[str] = []
+        self.dependency_graph: Dict[str, Set[str]] = {}
+        self.optimization_opportunities: Set[str] = set()
+        
     def add_child(self, child: 'CudaASTNode') -> None:
-        """Add a child node to this node"""
+        """Add child node with proper parent linking and validation"""
+        # Validate child type compatibility
+        if not self._validate_child_type(child):
+            self.validation_errors.append(
+                ValidationError(
+                    error_type="invalid_child",
+                    message=f"Invalid child type {child.node_type} for parent {self.node_type}",
+                    location=child.location
+                )
+            )
+            return
+            
         self.children.append(child)
         child.parent = self
-
-    def set_source_location(self, file: str, line: int, column: int) -> None:
-        """Set source code location information"""
-        self.source_location = {'file': file, 'line': line, 'column': column}
-
+        
+        # Update dependency graph
+        self._update_dependencies(child)
+        
+    def _validate_child_type(self, child: 'CudaASTNode') -> bool:
+        """Validate child type compatibility with current node"""
+        # Implementation depends on specific node type rules
+        return True
+        
+    def _update_dependencies(self, child: 'CudaASTNode') -> None:
+        """Update node dependency graph for optimization"""
+        child_deps = child.get_dependency_info()
+        self.dependency_graph[child.spelling] = child_deps['dependencies']
+        
     def get_metal_translation(self) -> str:
-        """Get Metal translation for this node"""
+        """Get or generate Metal translation with caching and validation"""
         if self.metal_translation is None:
-            self.metal_translation = self._generate_metal_translation()
+            try:
+                # Validate before translation
+                if not self.validate():
+                    raise ValueError(f"Node validation failed: {self.get_validation_errors()}")
+                    
+                # Generate and optimize translation
+                self.metal_translation = self._generate_metal_translation()
+                self._optimize_metal_translation()
+                
+            except Exception as e:
+                logger.error(f"Translation error in {self.node_type}: {str(e)}")
+                raise
+                
         return self.metal_translation
-
+        
     def _generate_metal_translation(self) -> str:
-        """Generate Metal translation for this node"""
-        raise NotImplementedError("Subclasses must implement _generate_metal_translation")
-
-    def validate_metal_compatibility(self) -> List[str]:
-        """Validate node's compatibility with Metal"""
-        errors = []
-        self._check_metal_limitations(errors)
-        return errors
-
-    def _check_metal_limitations(self, errors: List[str]) -> None:
-        """Check for Metal-specific limitations"""
-        # Base implementation - subclasses should override if needed
-        pass
-
-    def optimize_for_metal(self) -> None:
-        """Apply Metal-specific optimizations"""
-        # Base implementation - apply optimizations recursively
+        """Generate Metal translation - must be implemented by subclasses"""
+        raise NotImplementedError(
+            f"_generate_metal_translation not implemented for {self.__class__.__name__}"
+        )
+        
+    def _optimize_metal_translation(self) -> None:
+        """Apply Metal-specific optimizations to generated code"""
+        if not self.metal_translation:
+            return
+            
+        # Apply optimization opportunities
+        for opt in self.optimization_opportunities:
+            self.metal_translation = self._apply_optimization(
+                opt, self.metal_translation
+            )
+            
+    def _apply_optimization(self, optimization: str, code: str) -> str:
+        """Apply specific Metal optimization to code"""
+        # Implementation depends on optimization type
+        return code
+        
+    def validate(self) -> bool:
+        """Validate node and children for Metal compatibility"""
+        self.validation_errors.clear()
+        
+        # Validate current node
+        self._validate_node()
+        
+        # Validate children recursively
         for child in self.children:
-            child.optimize_for_metal()
-
-    def _optimize_memory_access(self) -> None:
-        """Optimize memory access patterns"""
-        if hasattr(self, 'is_buffer') and getattr(self, 'is_buffer'):
-            self.optimization_metadata['coalesced_access'] = True
-            self.optimization_metadata['vectorizable'] = self._can_vectorize()
-
-    def _can_vectorize(self) -> bool:
-        """Check if the node can be vectorized"""
-        vector_types = {'float', 'int', 'uint'}
-        return (hasattr(self, 'data_type') and
-                getattr(self, 'data_type', '').rstrip('234') in vector_types)
-
-    def get_ancestor_of_type(self, node_type: type) -> Optional['CudaASTNode']:
-        """Get the nearest ancestor of a specific type"""
-        current = self.parent
-        while current is not None:
-            if isinstance(current, node_type):
-                return current
-            current = current.parent
-        return None
-
-    def find_children_of_type(self, node_type: type) -> List['CudaASTNode']:
-        """Find all children of a specific type"""
-        result = []
+            if not child.validate():
+                self.validation_errors.extend(child.validation_errors)
+                
+        return len(self.validation_errors) == 0
+        
+    def _validate_node(self) -> None:
+        """Node-specific validation"""
+        # Validate Metal type mapping
+        if self.source_type and not self._validate_metal_type():
+            self.validation_errors.append(
+                ValidationError(
+                    error_type="invalid_type_mapping",
+                    message=f"No Metal equivalent for type {self.source_type}",
+                    location=self.location
+                )
+            )
+            
+        # Validate resource limits
+        self._validate_resource_limits()
+        
+    def _validate_metal_type(self) -> bool:
+        """Validate Metal type mapping exists"""
+        if not self.source_type:
+            return True
+            
+        base_type = self.source_type.replace('*', '').strip()
+        return base_type in CUDA_TO_METAL_TYPE_MAP
+        
+    def _validate_resource_limits(self) -> None:
+        """Validate against Metal resource limits"""
+        if self.optimization_metadata.threadgroup_memory_size > self.resource_requirements.max_total_threadgroup_memory:
+            self.validation_errors.append(
+                ValidationError(
+                    error_type="resource_limit",
+                    message="Threadgroup memory size exceeds Metal limit",
+                    location=self.location
+                )
+            )
+            
+    def get_validation_errors(self) -> List[str]:
+        """Get formatted validation errors"""
+        return [
+            f"{err.severity.upper()}: {err.message} at {err.location}"
+            for err in self.validation_errors
+        ]
+        
+    def get_dependency_info(self) -> Dict[str, Any]:
+        """Get node dependencies for optimization"""
+        deps = {
+            'reads': set(),
+            'writes': set(),
+            'dependencies': set(),
+            'scope': self.get_scope()
+        }
+        
+        # Collect dependencies from children
         for child in self.children:
-            if isinstance(child, node_type):
-                result.append(child)
-            result.extend(child.find_children_of_type(node_type))
-        return result
-
+            child_deps = child.get_dependency_info()
+            deps['reads'].update(child_deps['reads'])
+            deps['writes'].update(child_deps['writes'])
+            deps['dependencies'].update(child_deps['dependencies'])
+            
+        return deps
+        
     def get_scope(self) -> str:
-        """Get the scope of this node"""
+        """Get node scope for Metal translation"""
         if hasattr(self, 'metal_scope'):
             return getattr(self, 'metal_scope')
         return self.parent.get_scope() if self.parent else 'global'
-
-    def requires_barrier(self) -> bool:
-        """Check if this node requires a barrier"""
-        return bool(self.optimization_metadata['barrier_points'])
-
-    def has_side_effects(self) -> bool:
-        """Check if this node has side effects"""
-        # Base implementation - subclasses should override if needed
-        return False
-
-    def get_dependency_info(self) -> Dict[str, Any]:
-        """Get dependency information for this node"""
-        return {
-            'reads': set(),
-            'writes': set(),
-            'dependencies': [],
-            'scope': self.get_scope()
-        }
-
-    def __repr__(self) -> str:
-        """String representation of the node"""
-        return f"{self.__class__.__name__}(kind='{self.kind}', spelling='{self.spelling}')"
-
-class MetalFeatureSet:
-    """Metal feature sets and limitations"""
-    MAX_THREADS_PER_THREADGROUP = 1024
-    MAX_THREADGROUPS_PER_GRID = (2048, 2048, 2048)
-    MAX_TOTAL_THREADGROUP_MEMORY = 32768  # 32KB
-    MAX_BUFFER_SIZE = 1 << 30  # 1GB
-    SIMD_GROUP_SIZE = 32
-    PREFERRED_THREADGROUP_SIZE = 256
-
-class CudaBuiltinVariableNode(CudaASTNode):
-    """Represents CUDA built-in variables"""
-    def __init__(self, name: str):
-        super().__init__(kind='CudaBuiltinVariable', spelling=name)
-        self.metal_equivalent = self._get_metal_equivalent()
-
-    def _get_metal_equivalent(self) -> str:
-        """Get Metal equivalent for CUDA built-in variable"""
-        equivalents = {
-            'threadIdx': 'thread_position_in_threadgroup',
-            'blockIdx': 'threadgroup_position_in_grid',
-            'blockDim': 'threads_per_threadgroup',
-            'gridDim': 'threadgroups_per_grid',
-            'warpSize': str(MetalFeatureSet.SIMD_GROUP_SIZE)
-        }
-        return equivalents.get(self.spelling, self.spelling)
-
-    def _generate_metal_translation(self) -> str:
-        """Generate Metal translation for this built-in variable"""
-        return self.metal_equivalent
-
-    def has_side_effects(self) -> bool:
-        """Built-in variables have no side effects"""
-        return False
-
-    def get_dependency_info(self) -> Dict[str, Any]:
-        """Get dependency information for built-in variables"""
-        return {
-            'reads': {self.spelling},
-            'writes': set(),
-            'dependencies': [],
-            'scope': 'builtin'
-        }
-
-class CudaBuiltinVariableNode(CudaASTNode):
-    """Represents CUDA built-in variables"""
-    def __init__(self, name: str):
-        super().__init__(kind='CudaBuiltinVariable', spelling=name)
-        self.metal_equivalent = self._get_metal_equivalent()
-
-    def _get_metal_equivalent(self) -> str:
-        """Get Metal equivalent for CUDA built-in variable"""
-        equivalents = {
-            'threadIdx': 'thread_position_in_threadgroup',
-            'blockIdx': 'threadgroup_position_in_grid',
-            'blockDim': 'threads_per_threadgroup',
-            'gridDim': 'threadgroups_per_grid',
-            'warpSize': str(MetalFeatureSet.SIMD_GROUP_SIZE)
-        }
-        return equivalents.get(self.spelling, self.spelling)
-
-    def _generate_metal_translation(self) -> str:
-        return self.metal_equivalent
-
-class MetalVersion(Enum):
-    """Supported Metal versions for different MacOS releases"""
-    MACOS_11 = "Metal 2.3"  # Big Sur
-    MACOS_12 = "Metal 2.4"  # Monterey
-    MACOS_13 = "Metal 3.0"  # Ventura
-
-class MetalGPUFamily(Enum):
-    """Metal GPU families for Apple Silicon"""
-    APPLE7 = "apple7"  # M1
-    APPLE8 = "apple8"  # M2
-    APPLE9 = "apple9"  # M3
-
-class MetalFeatureSet:
-    """Metal feature sets and limitations"""
-    MAX_THREADS_PER_THREADGROUP = 1024
-    MAX_THREADGROUPS_PER_GRID = (2048, 2048, 2048)
-    MAX_TOTAL_THREADGROUP_MEMORY = 32768  # 32KB
-    MAX_BUFFER_SIZE = 1 << 30  # 1GB
-    SIMD_GROUP_SIZE = 32
-    PREFERRED_THREADGROUP_SIZE = 256
-
-class CudaASTNode:
-    """Base class for all AST nodes with enhanced Metal support"""
-    def __init__(self, kind: str, spelling: Optional[str] = None, type: Optional[str] = None):
-        self.kind = kind
-        self.spelling = spelling
-        self.type = type
-        self.children: List['CudaASTNode'] = []
-        self.parent: Optional['CudaASTNode'] = None
-        self.source_location: Optional[Dict[str, int]] = None
-
-        # Metal-specific attributes
-        self.metal_translation: Optional[str] = None
-        self.metal_type: Optional[str] = None
-        self.metal_limitations: Dict[str, Any] = {}
-        self.optimization_metadata: Dict[str, Any] = {
-            'vectorizable': False,
-            'coalesced_access': False,
-            'requires_simd_group': False,
-            'threadgroup_memory_size': 0,
-            'atomic_operations': [],
-            'barrier_points': []
-        }
-
-    def add_child(self, child: 'CudaASTNode') -> None:
-        self.children.append(child)
-        child.parent = self
-
-    def set_source_location(self, file: str, line: int, column: int) -> None:
-        self.source_location = {'file': file, 'line': line, 'column': column}
-
-    def get_metal_translation(self) -> str:
-        """Get Metal translation for this node"""
-        if self.metal_translation is None:
-            self.metal_translation = self._generate_metal_translation()
-        return self.metal_translation
-
-    def _generate_metal_translation(self) -> str:
-        """Generate Metal translation for this node"""
-        raise NotImplementedError("Subclasses must implement _generate_metal_translation")
-
-    def validate_metal_compatibility(self) -> List[str]:
-        """Validate node's compatibility with Metal"""
-        errors = []
-        self._check_metal_limitations(errors)
-        return errors
-
-    def _check_metal_limitations(self, errors: List[str]) -> None:
-        """Check for Metal-specific limitations"""
-        if isinstance(self, KernelNode):
-            if self.thread_count > MetalFeatureSet.MAX_THREADS_PER_THREADGROUP:
-                errors.append(f"Thread count {self.thread_count} exceeds Metal maximum of {MetalFeatureSet.MAX_THREADS_PER_THREADGROUP}")
-            if self.shared_memory_size > MetalFeatureSet.MAX_TOTAL_THREADGROUP_MEMORY:
-                errors.append(f"Shared memory size {self.shared_memory_size} exceeds Metal maximum of {MetalFeatureSet.MAX_TOTAL_THREADGROUP_MEMORY}")
-
-    def optimize_for_metal(self) -> None:
-        """Apply Metal-specific optimizations"""
-        if isinstance(self, KernelNode):
-            self._optimize_kernel()
-        elif isinstance(self, VariableNode):
-            self._optimize_memory_access()
-
-        for child in self.children:
-            child.optimize_for_metal()
-
-    def _optimize_memory_access(self) -> None:
-        """Optimize memory access patterns"""
-        if hasattr(self, 'is_buffer') and self.is_buffer:
-            self.optimization_metadata['coalesced_access'] = True
-            self.optimization_metadata['vectorizable'] = self._can_vectorize()
-
-    def _can_vectorize(self) -> bool:
-        """Check if the node can be vectorized"""
-        vector_types = {'float', 'int', 'uint'}
-        return hasattr(self, 'data_type') and self.data_type.rstrip('234') in vector_types
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(kind='{self.kind}', spelling='{self.spelling}')"
-
-class FunctionNode(CudaASTNode):
-    """Function node with Metal translation support"""
-    def __init__(self, name: str, return_type: str, parameters: List['VariableNode'],
-                 body: List[CudaASTNode], function_type: str, attributes: List[str]):
-        super().__init__(kind='Function', spelling=name)
-        self.return_type = return_type
-        self.parameters = parameters
-        self.body = body
-        self.function_type = function_type
-        self.attributes = attributes
-
-        # Metal-specific
-        self.metal_return_type = self._map_return_type()
-        self.is_device_function = function_type == 'device'
-
-        for param in parameters:
-            self.add_child(param)
-        for stmt in body:
-            self.add_child(stmt)
-
-    def _map_return_type(self) -> str:
-        """Map CUDA return type to Metal"""
-        return CUDA_TO_METAL_TYPE_MAP.get(self.return_type, self.return_type)
-
-    def _generate_metal_translation(self) -> str:
-        params = [param.get_metal_translation() for param in self.parameters]
-        param_str = ", ".join(params)
-        body_lines = []
-        for stmt in self.body:
-            trans = stmt.get_metal_translation()
-            if trans:
-                body_lines.extend(trans.split('\n'))
-
-        body_str = "\n    ".join(body_lines)
-        metal_attributes = self._get_metal_attributes()
-
-        return f"{metal_attributes}\n{self.metal_return_type} {self.spelling}({param_str})\n{{\n    {body_str}\n}}"
-
-    def _get_metal_attributes(self) -> str:
-        """Get Metal-specific attributes"""
-        attrs = []
-        if 'device' in self.attributes:
-            attrs.append('__attribute__((device))')
-        return " ".join(attrs)
-
-class KernelNode(FunctionNode):
-    """CUDA kernel function with M1/M2-optimized Metal translation"""
-    def __init__(self, name: str, parameters: List['VariableNode'],
-                 body: List[CudaASTNode], attributes: List[str],
-                 launch_config: Optional[Dict[str, Any]] = None):
-        super().__init__(name, 'void', parameters, body, 'kernel', attributes)
-        self.launch_config = launch_config or {}
-
-        # Metal-specific attributes
-        self.thread_count = 0
-        self.shared_memory_size = 0
-        self.metal_kernel_name = f"metal_{name}"
-        self.threadgroup_size = self._calculate_optimal_threadgroup_size()
-        self.requires_simd_group = False
-        self.metal_buffer_indices: Dict[str, int] = {}
-
-    def _calculate_optimal_threadgroup_size(self) -> Dict[str, int]:
-        """Calculate optimal threadgroup size for M1/M2"""
-        if not self.launch_config:
-            return {'x': 256, 'y': 1, 'z': 1}
-
-        block_dim = self.launch_config.get('block_dim', {})
-        x = min(block_dim.get('x', 256), MetalFeatureSet.MAX_THREADS_PER_THREADGROUP)
-        y = min(block_dim.get('y', 1), MetalFeatureSet.MAX_THREADS_PER_THREADGROUP // x)
-        z = min(block_dim.get('z', 1), MetalFeatureSet.MAX_THREADS_PER_THREADGROUP // (x * y))
-
-        # Ensure multiple of SIMD group size
-        x = ((x + MetalFeatureSet.SIMD_GROUP_SIZE - 1) //
-             MetalFeatureSet.SIMD_GROUP_SIZE * MetalFeatureSet.SIMD_GROUP_SIZE)
-
-        return {'x': x, 'y': y, 'z': z}
-
-    def _generate_metal_translation(self) -> str:
-        """Generate Metal kernel code"""
-        params = self._translate_parameters()
-        signature = f"kernel void {self.metal_kernel_name}({', '.join(params)})"
-
-        # Thread indexing
-        body = [
-            "const uint3 thread_position_in_grid [[thread_position_in_grid]];",
-            "const uint3 thread_position_in_threadgroup [[thread_position_in_threadgroup]];",
-            "const uint3 threadgroup_position [[threadgroup_position_in_grid]];",
-            "const uint3 threadgroups_per_grid [[threadgroups_per_grid]];",
-            "const uint3 threads_per_threadgroup [[threads_per_threadgroup]];"
-        ]
-
-        # SIMD group support
-        if self.requires_simd_group:
-            body.extend([
-                "const uint simd_lane_id = thread_position_in_threadgroup.x & 0x1F;",
-                "const uint simd_group_id = thread_position_in_threadgroup.x >> 5;"
-            ])
-
-        # Translate body
-        for stmt in self.body:
-            trans = stmt.get_metal_translation()
-            if trans:
-                body.extend([line for line in trans.split('\n')])
-
-        body_str = "\n    ".join(body)
-        attributes = self._get_metal_attributes()
-
-        return f"{attributes}\n{signature}\n{{\n    {body_str}\n}}"
-
-    def _translate_parameters(self) -> List[str]:
-        """Translate kernel parameters to Metal"""
-        metal_params = []
-        for idx, param in enumerate(self.parameters):
-            metal_type = param.get_metal_type()
-
-            if param.is_buffer():
-                qualifier = "device" if not param.is_readonly() else "constant"
-                metal_params.append(f"{qualifier} {metal_type}* {param.spelling} [[buffer({idx})]]")
-            elif param.is_texture():
-                metal_params.append(f"texture2d<float, access::read> {param.spelling} [[texture({idx})]]")
-            else:
-                metal_params.append(f"constant {metal_type}& {param.spelling} [[buffer({idx})]]")
-
-            self.metal_buffer_indices[param.spelling] = idx
-
-        return metal_params
-
-    def _get_metal_attributes(self) -> str:
-        """Generate Metal kernel attributes"""
-        attrs = []
-
-        tg_size = self.threadgroup_size
-        attrs.append(f"[[threads_per_threadgroup({tg_size['x']}, {tg_size['y']}, {tg_size['z']})]]")
-
-        if self.thread_count > 0:
-            attrs.append(f"[[max_total_threads_per_threadgroup({self.thread_count})]]")
-
-        return " ".join(attrs)
-
-    def _optimize_kernel(self) -> None:
-        """Apply kernel-specific optimizations"""
-        # Optimize thread hierarchy
-        self.threadgroup_size = self._calculate_optimal_threadgroup_size()
-
-        # Check for SIMD opportunities
-        self.requires_simd_group = any(
-            child.optimization_metadata['requires_simd_group']
-            for child in self.children
-        )
-
-        # Optimize memory access
-        for child in self.children:
-            if isinstance(child, VariableNode):
-                child._optimize_memory_access()
-
-class VariableNode(CudaASTNode):
-    """Variable declaration with enhanced Metal type mapping"""
-    def __init__(self, name: str, data_type: str, qualifiers: List[str],
-                 storage_class: Optional[str], initializer: Optional[List[CudaASTNode]] = None):
-        super().__init__(kind='Variable', spelling=name)
-        self.data_type = data_type
-        self.qualifiers = qualifiers
-        self.storage_class = storage_class
-        self.initializer = initializer
-
-        # Metal-specific attributes
-        self.metal_type = self._map_to_metal_type()
-        self.is_buffer = any(q in ['__global__', 'global'] for q in qualifiers)
-        self.is_texture = 'texture' in data_type.lower()
-        self.is_readonly = '__restrict__' in qualifiers
-        self.metal_buffer_index = None
-
-        if self.initializer:
-            for init in self.initializer:
-                self.add_child(init)
-
-    def _map_to_metal_type(self) -> str:
-        """Map CUDA type to Metal type"""
-        base_type = self.data_type.replace('*', '').strip()
-        return CUDA_TO_METAL_TYPE_MAP.get(base_type, base_type)
-
-    def get_metal_type(self) -> str:
-        """Get Metal type with qualifiers"""
-        base_type = self.metal_type
-
-        if '__shared__' in self.qualifiers:
-            return f"threadgroup {base_type}"
-        elif '__constant__' in self.qualifiers:
-            return f"constant {base_type}"
-        elif self.is_buffer:
-            return f"device {base_type}"
-
-        return base_type
-
-    def is_buffer(self) -> bool:
-        """Check if variable is a buffer"""
-        return self.is_buffer
-
-    def is_texture(self) -> bool:
-        """Check if variable is a texture"""
-        return self.is_texture
-
-    def is_readonly(self) -> bool:
-        """Check if variable is readonly"""
-        return self.is_readonly
-
-    def _generate_metal_translation(self) -> str:
-        """Generate Metal variable declaration"""
-        metal_type = self.get_metal_type()
-
-        # Handle initialization
-        init = ""
-        if self.initializer:
-            init_values = [init.get_metal_translation() for init in self.initializer]
-            init = f" = {', '.join(init_values)}"
-
-        # Handle array declarations
-        if hasattr(self, 'array_dimensions') and self.array_dimensions:
-            dims = ''.join(f'[{dim}]' for dim in self.array_dimensions)
-            return f"{metal_type} {self.spelling}{dims}{init};"
-
-        return f"{metal_type} {self.spelling}{init};"
-
-class StatementNode(CudaASTNode):
-    """Base class for all statement nodes"""
-    def __init__(self, kind: str, spelling: Optional[str] = None):
-        super().__init__(kind=kind, spelling=spelling)
-        self.metal_scope: Optional[str] = None
-
-class ExpressionNode(CudaASTNode):
-    """Base class for all expression nodes"""
-    def __init__(self, kind: str, spelling: Optional[str] = None, type: Optional[str] = None):
-        super().__init__(kind=kind, spelling=spelling, type=type)
-        self.result_type = type
-        self.metal_expression: Optional[str] = None
-
-class BinaryOperatorNode(ExpressionNode):
-    """Binary operation with Metal operator mapping"""
-    def __init__(self, operator: str, left: ExpressionNode, right: ExpressionNode):
-        super().__init__(kind='BinaryOperator', spelling=operator)
-        self.operator = operator
-        self.left = left
-        self.right = right
-        self.metal_operator = CUDA_TO_METAL_OPERATORS.get(operator, operator)
-
-        self.add_child(left)
-        self.add_child(right)
-
-    def _generate_metal_translation(self) -> str:
-        left_trans = self.left.get_metal_translation()
-        right_trans = self.right.get_metal_translation()
-
-        # Handle special cases
-        if self.operator == '/':
-            if self.right.type in ['int', 'int32_t']:
-                # Integer division needs explicit conversion in Metal
-                return f"float({left_trans}) / float({right_trans})"
-
-        return f"({left_trans} {self.metal_operator} {right_trans})"
-
-class UnaryOperatorNode(ExpressionNode):
-    """Unary operation with Metal operator mapping"""
-    def __init__(self, operator: str, operand: ExpressionNode):
-        super().__init__(kind='UnaryOperator', spelling=operator)
-        self.operator = operator
-        self.operand = operand
-        self.metal_operator = CUDA_TO_METAL_OPERATORS.get(operator, operator)
-
-        self.add_child(operand)
-
-    def _generate_metal_translation(self) -> str:
-        operand_trans = self.operand.get_metal_translation()
-        return f"{self.metal_operator}({operand_trans})"
-
-class CallExpressionNode(ExpressionNode):
-    """Function call with Metal function mapping"""
-    def __init__(self, function: ExpressionNode, arguments: List[ExpressionNode]):
-        super().__init__(kind='CallExpression')
-        self.function = function
-        self.arguments = arguments
-
-        self.add_child(function)
-        for arg in arguments:
-            self.add_child(arg)
-
-    def _generate_metal_translation(self) -> str:
-        func_name = self.function.spelling
-        metal_func = CUDA_TO_METAL_FUNCTION_MAP.get(func_name, func_name)
-
-        # Translate arguments
-        metal_args = [arg.get_metal_translation() for arg in self.arguments]
-
-        # Handle special cases
-        if func_name in ['atomicAdd', 'atomicSub', 'atomicExch']:
-            # Metal atomic functions need memory order
-            metal_args.append('memory_order_relaxed')
-
-        return f"{metal_func}({', '.join(metal_args)})"
-
-class MemberAccessNode(ExpressionNode):
-    """Member access expression with Metal support"""
-    def __init__(self, base: ExpressionNode, member: str):
-        super().__init__(kind='MemberAccess', spelling=member)
-        self.base = base
-        self.member = member
-        self.add_child(base)
-
-    def _generate_metal_translation(self) -> str:
-        base_trans = self.base.get_metal_translation()
-
-        # Handle CUDA built-in variables
-        if isinstance(self.base, CudaBuiltinVariableNode):
-            if self.base.spelling == 'threadIdx':
-                return f"thread_position_in_threadgroup.{self.member}"
-            elif self.base.spelling == 'blockIdx':
-                return f"threadgroup_position.{self.member}"
-            elif self.base.spelling == 'blockDim':
-                return f"threads_per_threadgroup.{self.member}"
-            elif self.base.spelling == 'gridDim':
-                return f"threadgroups_per_grid.{self.member}"
-
-        return f"{base_trans}.{self.member}"
-
-class ArraySubscriptNode(ExpressionNode):
-    """Array subscript with Metal optimization support"""
-    def __init__(self, array: ExpressionNode, index: ExpressionNode):
-        super().__init__(kind='ArraySubscript')
-        self.array = array
-        self.index = index
-        self.add_child(array)
-        self.add_child(index)
-
-        # Optimization metadata
-        self.optimization_metadata['coalesced_access'] = False
-        self.optimization_metadata['vectorizable'] = False
-
-    def _generate_metal_translation(self) -> str:
-        array_trans = self.array.get_metal_translation()
-        index_trans = self.index.get_metal_translation()
-
-        if self.optimization_metadata['coalesced_access']:
-            # Generate optimized access pattern
-            return self._generate_coalesced_access(array_trans, index_trans)
-
-        return f"{array_trans}[{index_trans}]"
-
-    def _generate_coalesced_access(self, array: str, index: str) -> str:
-        """Generate coalesced memory access pattern"""
-        return f"{array}[{index} + thread_position_in_threadgroup.x]"
-
-class CompoundStatementNode(StatementNode):
-    """Block of statements"""
-    def __init__(self, statements: List[Union[StatementNode, ExpressionNode]]):
-        super().__init__(kind='CompoundStatement')
-        self.statements = statements
-        for stmt in statements:
-            self.add_child(stmt)
-
-    def _generate_metal_translation(self) -> str:
-        metal_stmts = []
-        for stmt in self.statements:
-            trans = stmt.get_metal_translation()
-            if trans:
-                metal_stmts.extend(trans.split('\n'))
-        return "{\n    " + "\n    ".join(metal_stmts) + "\n}"
-
-class IfStatementNode(StatementNode):
-    """If statement with Metal-specific optimizations"""
-    def __init__(self, condition: ExpressionNode, then_branch: StatementNode,
-                 else_branch: Optional[StatementNode] = None):
-        super().__init__(kind='IfStatement')
-        self.condition = condition
-        self.then_branch = then_branch
-        self.else_branch = else_branch
-
-        self.add_child(condition)
-        self.add_child(then_branch)
-        if else_branch:
-            self.add_child(else_branch)
-
-    def _generate_metal_translation(self) -> str:
-        cond_trans = self.condition.get_metal_translation()
-        then_trans = self.then_branch.get_metal_translation()
-
-        # Check if we can use select() for better performance
-        if self._can_use_select():
-            return self._generate_select_statement()
-
-        result = f"if ({cond_trans}) {then_trans}"
-        if self.else_branch:
-            else_trans = self.else_branch.get_metal_translation()
-            result += f" else {else_trans}"
-
-        return result
-
-    def _can_use_select(self) -> bool:
-        """Check if we can use Metal's select function"""
-        return (isinstance(self.then_branch, ExpressionNode) and
-                isinstance(self.else_branch, ExpressionNode) and
-                not self.optimization_metadata.get('requires_side_effects', False))
-
-    def _generate_select_statement(self) -> str:
-        """Generate Metal select statement"""
-        cond = self.condition.get_metal_translation()
-        then_expr = self.then_branch.get_metal_translation()
-        else_expr = self.else_branch.get_metal_translation()
-        return f"select({else_expr}, {then_expr}, {cond})"
-
-class ForStatementNode(StatementNode):
-    """For loop with Metal optimizations"""
-    def __init__(self, init: Optional[Union[StatementNode, ExpressionNode]],
-                 condition: Optional[ExpressionNode],
-                 increment: Optional[ExpressionNode],
-                 body: StatementNode):
-        super().__init__(kind='ForStatement')
-        self.init = init
-        self.condition = condition
-        self.increment = increment
-        self.body = body
-
-        if init:
-            self.add_child(init)
-        if condition:
-            self.add_child(condition)
-        if increment:
-            self.add_child(increment)
-        self.add_child(body)
-
-        # Optimization metadata
-        self.optimization_metadata.update({
-            'unrollable': False,
-            'vectorizable': False,
-            'trip_count': None
-        })
-
-    def _generate_metal_translation(self) -> str:
-        # Check for optimization opportunities
-        if self._should_unroll():
-            return self._generate_unrolled_loop()
-        elif self._should_vectorize():
-            return self._generate_vectorized_loop()
-
-        # Standard for loop translation
-        init_trans = self.init.get_metal_translation() if self.init else ""
-        cond_trans = self.condition.get_metal_translation() if self.condition else "true"
-        incr_trans = self.increment.get_metal_translation() if self.increment else ""
-        body_trans = self.body.get_metal_translation()
-
-        return f"for ({init_trans}; {cond_trans}; {incr_trans}) {body_trans}"
-
-    def _should_unroll(self) -> bool:
-        """Check if loop should be unrolled"""
-        return (self.optimization_metadata['unrollable'] and
-                self.optimization_metadata['trip_count'] is not None and
-                self.optimization_metadata['trip_count'] <= 8)
-
-    def _should_vectorize(self) -> bool:
-        """Check if loop should be vectorized"""
-        return (self.optimization_metadata['vectorizable'] and
-                not self._has_loop_carried_dependencies())
-
-    def _has_loop_carried_dependencies(self) -> bool:
-        """Check for loop-carried dependencies"""
-        # Implementation depends on analysis capabilities
-        return False
-
-    def _generate_unrolled_loop(self) -> str:
-        """Generate unrolled loop"""
-        trip_count = self.optimization_metadata['trip_count']
-        body_trans = self.body.get_metal_translation()
-
-        unrolled_stmts = []
-        for i in range(trip_count):
-            # Replace loop variable with constant
-            stmt = body_trans.replace(self.init.spelling, str(i))
-            unrolled_stmts.append(stmt)
-
-        return "{\n    " + "\n    ".join(unrolled_stmts) + "\n}"
-
-    def _generate_vectorized_loop(self) -> str:
-        """Generate vectorized loop"""
-        # Implementation depends on vectorization strategy
-        return self._generate_metal_translation()
-
-class ReturnStatementNode(StatementNode):
-    """Return statement with Metal type compatibility"""
-    def __init__(self, expression: Optional[ExpressionNode] = None):
-        super().__init__(kind='ReturnStatement')
-        self.expression = expression
-        if expression:
-            self.add_child(expression)
-
-    def _generate_metal_translation(self) -> str:
-        if not self.expression:
-            return "return;"
-        expr_trans = self.expression.get_metal_translation()
-        return f"return {expr_trans};"
-
-class CastExpressionNode(ExpressionNode):
-    """Type cast with Metal type mapping"""
-    def __init__(self, target_type: str, expression: ExpressionNode):
-        super().__init__(kind='CastExpression', type=target_type)
-        self.target_type = target_type
-        self.expression = expression
-        self.add_child(expression)
-
-    def _generate_metal_translation(self) -> str:
-        metal_type = CUDA_TO_METAL_TYPE_MAP.get(self.target_type, self.target_type)
-        expr_trans = self.expression.get_metal_translation()
-        return f"({metal_type})({expr_trans})"
-
-class CudaSharedMemoryNode(CudaASTNode):
-    """CUDA shared memory with Metal threadgroup translation"""
-    def __init__(self, variable: VariableNode):
-        super().__init__(kind='CudaSharedMemory')
-        self.variable = variable
-        self.metal_type = 'threadgroup'
-        self.add_child(variable)
-
-    def _generate_metal_translation(self) -> str:
-        var_trans = self.variable.get_metal_translation()
-        return f"threadgroup {var_trans}"
-
-class CudaAtomicOperationNode(CudaASTNode):
-    """CUDA atomic operations with Metal atomic translation"""
-    def __init__(self, operation: str, arguments: List[ExpressionNode]):
-        super().__init__(kind='CudaAtomicOperation', spelling=operation)
-        self.operation = operation
-        self.arguments = arguments
-        for arg in arguments:
-            self.add_child(arg)
-
-    def _generate_metal_translation(self) -> str:
-        metal_op = CUDA_TO_METAL_FUNCTION_MAP.get(self.operation)
-        if not metal_op:
-            raise ValueError(f"Unsupported atomic operation: {self.operation}")
-
-        args_trans = [arg.get_metal_translation() for arg in self.arguments]
-        # Metal atomic operations require memory order
-        args_trans.append("memory_order_relaxed")
-        return f"{metal_op}({', '.join(args_trans)})"
-
-class CudaTextureNode(CudaASTNode):
-    """CUDA texture with Metal texture translation"""
-    def __init__(self, name: str, dimensions: int, type: str):
-        super().__init__(kind='CudaTexture', spelling=name)
-        self.dimensions = dimensions
-        self.type = type
-        self.metal_texture_type = self._get_metal_texture_type()
-
-    def _get_metal_texture_type(self) -> str:
-        if self.dimensions == 1:
-            return "texture1d"
-        elif self.dimensions == 2:
-            return "texture2d"
-        elif self.dimensions == 3:
-            return "texture3d"
-        raise ValueError(f"Unsupported texture dimensions: {self.dimensions}")
-
-    def _generate_metal_translation(self) -> str:
-        base_type = CUDA_TO_METAL_TYPE_MAP.get(self.type, 'float')
-        return f"{self.metal_texture_type}<{base_type}>"
-
-class CudaMallocNode(CudaASTNode):
-    """CUDA memory allocation with Metal buffer creation"""
-    def __init__(self, devPtr: ExpressionNode, size: ExpressionNode):
-        super().__init__(kind='CudaMalloc')
-        self.devPtr = devPtr
-        self.size = size
-        self.add_child(devPtr)
-        self.add_child(size)
-
-    def _generate_metal_translation(self) -> str:
-        ptr_trans = self.devPtr.get_metal_translation()
-        size_trans = self.size.get_metal_translation()
-        return f"device.makeBuffer(length: {size_trans}, options: MTLResourceOptions.storageModeShared)"
-
-class CudaMemcpyNode(CudaASTNode):
-    """CUDA memcpy with Metal buffer copy"""
-    def __init__(self, dst: ExpressionNode, src: ExpressionNode, count: ExpressionNode, kind: str):
-        super().__init__(kind='CudaMemcpy')
-        self.dst = dst
-        self.src = src
-        self.count = count
-        self.kind = kind
-        self.add_child(dst)
-        self.add_child(src)
-        self.add_child(count)
-
-    def _generate_metal_translation(self) -> str:
-        dst_trans = self.dst.get_metal_translation()
-        src_trans = self.src.get_metal_translation()
-        count_trans = self.count.get_metal_translation()
-
-        if self.kind == 'cudaMemcpyHostToDevice':
-            return f"memcpy({dst_trans}.contents, {src_trans}, {count_trans})"
-        elif self.kind == 'cudaMemcpyDeviceToHost':
-            return f"memcpy({dst_trans}, {src_trans}.contents, {count_trans})"
-        elif self.kind == 'cudaMemcpyDeviceToDevice':
-            return f"commandBuffer.copy(from: {src_trans}, to: {dst_trans}, size: {count_trans})"
-        else:
-            raise ValueError(f"Unsupported memcpy kind: {self.kind}")
-
-class CudaSyncthreadsNode(CudaASTNode):
-    """CUDA syncthreads with Metal barrier"""
-    def __init__(self):
-        super().__init__(kind='CudaSyncthreads')
-
-    def _generate_metal_translation(self) -> str:
-        return "threadgroup_barrier(mem_flags::mem_threadgroup)"
-
-class CudaEventNode(CudaASTNode):
-    """Base class for CUDA event operations"""
-    def __init__(self, kind: str, event: ExpressionNode):
-        super().__init__(kind=kind)
-        self.event = event
-        self.add_child(event)
-
-class CudaEventCreateNode(CudaEventNode):
-    def __init__(self, event: ExpressionNode):
-        super().__init__('CudaEventCreate', event)
-
-    def _generate_metal_translation(self) -> str:
-        event_trans = self.event.get_metal_translation()
-        return f"{event_trans} = device.makeEvent()"
-
-class CudaEventRecordNode(CudaEventNode):
-    def __init__(self, event: ExpressionNode, stream: Optional[ExpressionNode] = None):
-        super().__init__('CudaEventRecord', event)
-        self.stream = stream
-        if stream:
-            self.add_child(stream)
-
-    def _generate_metal_translation(self) -> str:
-        event_trans = self.event.get_metal_translation()
-        if self.stream:
-            stream_trans = self.stream.get_metal_translation()
-            return f"{stream_trans}.encodeSignalEvent({event_trans})"
-        return f"commandBuffer.encodeSignalEvent({event_trans})"
-
-class CudaEventSynchronizeNode(CudaEventNode):
-    def __init__(self, event: ExpressionNode):
-        super().__init__('CudaEventSynchronize', event)
-
-    def _generate_metal_translation(self) -> str:
-        event_trans = self.event.get_metal_translation()
-        return f"{event_trans}.wait()"
-
-# Optimization utilities for Metal GPU code generation
-from typing import List, Dict, Any, Optional, Set, Tuple
-import math
-from enum import Enum
-
-class AccessPattern(Enum):
-    SEQUENTIAL = "sequential"
-    STRIDED = "strided"
-    RANDOM = "random"
-    COALESCED = "coalesced"
-
-class OptimizationLevel(Enum):
-    NONE = 0
-    BASIC = 1
-    AGGRESSIVE = 2
-    MAXIMUM = 3
-
-class MetalOptimizer:
-    """Core optimization utilities for Metal GPU code"""
-
-    def __init__(self, optimization_level: OptimizationLevel = OptimizationLevel.BASIC):
-        self.optimization_level = optimization_level
-        self.simd_width = 32  # Metal GPU SIMD width
-        self.max_threads_per_threadgroup = 1024
-        self.max_total_threadgroup_memory = 32768  # 32KB
-        self.preferred_workgroup_multiple = 32
-
-    def optimize_threadgroup_size(self, requested_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
-        """Optimize threadgroup size for Metal GPU execution"""
-        x, y, z = requested_size
-        total_threads = x * y * z
-
-        if total_threads > self.max_threads_per_threadgroup:
-            # Scale down dimensions while maintaining ratios
-            scale = math.sqrt(self.max_threads_per_threadgroup / total_threads)
-            x = min(int(x * scale), self.max_threads_per_threadgroup)
-            y = min(int(y * scale), self.max_threads_per_threadgroup // x)
-            z = min(int(z * scale), self.max_threads_per_threadgroup // (x * y))
-
-        # Ensure x dimension is multiple of SIMD width
-        x = ((x + self.simd_width - 1) // self.simd_width) * self.simd_width
-
-        return (x, y, z)
-
-    def analyze_memory_access(self, access_pattern: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Analyze memory access patterns for optimization"""
-        result = {
-            'pattern': AccessPattern.RANDOM,
-            'stride': None,
-            'coalescing_opportunity': False,
-            'vectorization_opportunity': False,
-            'cache_locality': 0.0,
-            'bank_conflicts': [],
-        }
-
-        # Detect sequential access
-        if self._is_sequential_access(access_pattern):
-            result['pattern'] = AccessPattern.SEQUENTIAL
-            result['coalescing_opportunity'] = True
-            result['cache_locality'] = 1.0
-
-        # Detect strided access
-        elif (stride := self._detect_stride(access_pattern)) is not None:
-            result['pattern'] = AccessPattern.STRIDED
-            result['stride'] = stride
-            result['vectorization_opportunity'] = self._can_vectorize(stride)
-            result['cache_locality'] = 1.0 / stride
-
-        # Check for bank conflicts in threadgroup memory
-        if bank_conflicts := self._check_bank_conflicts(access_pattern):
-            result['bank_conflicts'] = bank_conflicts
-
-        return result
-
-    def optimize_kernel_launch(self, grid_size: Tuple[int, int, int],
-                               block_size: Tuple[int, int, int]) -> Dict[str, Any]:
-        """Optimize kernel launch configuration for Metal"""
-        optimized_block = self.optimize_threadgroup_size(block_size)
-
-        # Calculate grid size based on optimized block size
-        optimized_grid = tuple(
-            (grid_size[i] * block_size[i] + optimized_block[i] - 1) // optimized_block[i]
-            for i in range(3)
-        )
-
-        return {
-            'threadgroup_size': optimized_block,
-            'grid_size': optimized_grid,
-            'simd_groups_per_threadgroup': optimized_block[0] // self.simd_width,
-            'thread_execution_width': self.simd_width,
-            'max_total_threads': optimized_grid[0] * optimized_grid[1] * optimized_grid[2] *
-                                 optimized_block[0] * optimized_block[1] * optimized_block[2]
-        }
-
-    def optimize_memory_layout(self, buffer_size: int, access_info: Dict[str, Any]) -> Dict[str, Any]:
-        """Optimize memory layout for Metal buffers"""
-        alignment = 16  # Base alignment for Metal buffers
-        padded_size = (buffer_size + alignment - 1) & ~(alignment - 1)
-
-        result = {
-            'size': padded_size,
-            'alignment': alignment,
-            'padding': padded_size - buffer_size,
-            'layout_strategy': 'linear'
-        }
-
-        # Apply advanced optimizations based on access pattern
-        if access_info['pattern'] == AccessPattern.SEQUENTIAL:
-            result['layout_strategy'] = 'sequential_optimized'
-            result['prefetch_distance'] = self.simd_width * 4
-
-        elif access_info['pattern'] == AccessPattern.STRIDED:
-            if access_info['vectorization_opportunity']:
-                result['layout_strategy'] = 'vectorized'
-                result['vector_width'] = min(4, access_info['stride'])
-                alignment = max(alignment, result['vector_width'] * 4)
-
-        return result
-
-    def generate_barrier_optimization(self, sync_points: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Optimize barrier placement and type"""
-        optimized_barriers = []
-
-        for sync_point in sync_points:
-            if self._can_remove_barrier(sync_point):
-                continue
-
-            barrier_type = self._select_optimal_barrier(sync_point)
-            optimized_barriers.append({
-                'location': sync_point['location'],
-                'type': barrier_type,
-                'scope': sync_point.get('scope', 'threadgroup'),
-                'optimization_applied': True
-            })
-
-        return optimized_barriers
-
-    def optimize_arithmetic_operations(self, operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Optimize arithmetic operations for Metal"""
-        optimized_ops = []
-
-        for op in operations:
-            if op['type'] == 'binary':
-                opt_op = self._optimize_binary_operation(op)
-            elif op['type'] == 'unary':
-                opt_op = self._optimize_unary_operation(op)
-            elif op['type'] == 'math_function':
-                opt_op = self._optimize_math_function(op)
-            else:
-                opt_op = op
-
-            if fast_variant := self._get_fast_math_variant(opt_op):
-                opt_op['implementation'] = fast_variant
-
-            optimized_ops.append(opt_op)
-
-        return optimized_ops
-
-    # Private helper methods
-    def _is_sequential_access(self, access_pattern: List[Dict[str, Any]]) -> bool:
-        """Check if memory access pattern is sequential"""
-        if not access_pattern:
-            return False
-
-        expected_idx = access_pattern[0]['index']
-        for access in access_pattern[1:]:
-            if access['index'] != expected_idx + 1:
-                return False
-            expected_idx = access['index']
-
-        return True
-
-    def _detect_stride(self, access_pattern: List[Dict[str, Any]]) -> Optional[int]:
-        """Detect strided access pattern"""
-        if len(access_pattern) < 2:
-            return None
-
-        stride = access_pattern[1]['index'] - access_pattern[0]['index']
-        for i in range(1, len(access_pattern) - 1):
-            if access_pattern[i + 1]['index'] - access_pattern[i]['index'] != stride:
-                return None
-
-        return stride
-
-    def _can_vectorize(self, stride: int) -> bool:
-        """Check if access pattern can be vectorized"""
-        return (stride in (2, 4, 8, 16) and
-                self.optimization_level >= OptimizationLevel.BASIC)
-
-    def _check_bank_conflicts(self, access_pattern: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Detect bank conflicts in threadgroup memory access"""
-        conflicts = []
-        bank_accesses = {}
-
-        for access in access_pattern:
-            bank = access['index'] % 32  # Metal uses 32 banks
-            if bank in bank_accesses:
-                conflicts.append({
-                    'bank': bank,
-                    'first_access': bank_accesses[bank],
-                    'conflicting_access': access
-                })
-            bank_accesses[bank] = access
-
-        return conflicts
-
-    def _can_remove_barrier(self, sync_point: Dict[str, Any]) -> bool:
-        """Check if barrier can be safely removed"""
-        return (not sync_point.get('required_by_dependency', True) and
-                self.optimization_level >= OptimizationLevel.AGGRESSIVE)
-
-    def _select_optimal_barrier(self, sync_point: Dict[str, Any]) -> str:
-        """Select optimal barrier type based on synchronization requirements"""
-        if sync_point.get('scope') == 'device':
-            return 'device_memory_barrier'
-        elif sync_point.get('scope') == 'threadgroup':
-            if sync_point.get('memory_access_only', False):
-                return 'threadgroup_memory_barrier'
-            else:
-                return 'threadgroup_barrier'
-        return 'threadgroup_barrier'
-
-    def _get_fast_math_variant(self, operation: Dict[str, Any]) -> Optional[str]:
-        """Get fast math variant of operation if available"""
-        fast_variants = {
-            'sin': 'fast::sin',
-            'cos': 'fast::cos',
-            'exp': 'fast::exp',
-            'log': 'fast::log',
-            'pow': 'fast::pow',
-            'rsqrt': 'fast::rsqrt'
-        }
-
-        if (operation['type'] == 'math_function' and
-                operation['function'] in fast_variants and
-                self.optimization_level >= OptimizationLevel.BASIC):
-            return fast_variants[operation['function']]
-
+        
+    def get_ancestor_of_type(self, node_type: NodeType) -> Optional['CudaASTNode']:
+        """Find nearest ancestor of specified type"""
+        current = self.parent
+        while current is not None:
+            if current.node_type == node_type:
+                return current
+            current = current.parent
         return None
+        
+    def find_children_of_type(self, node_type: NodeType) -> List['CudaASTNode']:
+        """Find all children of specified type"""
+        result = []
+        for child in self.children:
+            if child.node_type == node_type:
+                result.append(child)
+            result.extend(child.find_children_of_type(node_type))
+        return result
+        
+    def optimize(self) -> None:
+        """Apply Metal-specific optimizations"""
+        # Identify optimization opportunities
+        self._analyze_optimization_opportunities()
+        
+        # Apply optimizations
+        self._optimize_node()
+        
+        # Optimize children
+        for child in self.children:
+            child.optimize()
+            
+    def _analyze_optimization_opportunities(self) -> None:
+        """Analyze node for Metal optimization opportunities"""
+        # Check vectorization
+        if self._can_vectorize():
+            self.optimization_opportunities.add('vectorize')
+            
+        # Check memory access patterns
+        if self._can_optimize_memory_access():
+            self.optimization_opportunities.add('coalesce_memory')
+            
+        # Check SIMD opportunities
+        if self._can_use_simd():
+            self.optimization_opportunities.add('simd_optimize')
+            
+    def _can_vectorize(self) -> bool:
+        """Check if node operations can be vectorized"""
+        return False  # Base implementation
+        
+    def _can_optimize_memory_access(self) -> bool:
+        """Check if memory access can be optimized"""
+        return False  # Base implementation
+        
+    def _can_use_simd(self) -> bool:
+        """Check if SIMD optimizations can be applied"""
+        return False  # Base implementation
+        
+    def _optimize_node(self) -> None:
+        """Apply node-specific optimizations"""
+        pass  # Base implementation
+        
+    def to_json(self) -> Dict[str, Any]:
+        """Convert node to JSON for serialization"""
+        return {
+            'node_type': self.node_type.name,
+            'spelling': self.spelling,
+            'source_type': self.source_type,
+            'location': vars(self.location) if self.location else None,
+            'metal_translation': self.metal_translation,
+            'metal_type': self.metal_type,
+            'metal_qualifiers': self.metal_qualifiers,
+            'optimization_metadata': vars(self.optimization_metadata),
+            'validation_errors': [vars(err) for err in self.validation_errors],
+            'translation_warnings': self.translation_warnings,
+            'children': [child.to_json() for child in self.children]
+        }
 
-    def _optimize_binary_operation(self, op: Dict[str, Any]) -> Dict[str, Any]:
-        """Optimize binary operation"""
-        optimized = op.copy()
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> 'CudaASTNode':
+        """Create node from JSON representation"""
+        node = cls(
+            node_type=NodeType[data['node_type']],
+            spelling=data['spelling'],
+            source_type=data['source_type'],
+            location=SourceLocation(**data['location']) if data['location'] else None
+        )
+        
+        node.metal_translation = data['metal_translation']
+        node.metal_type = data['metal_type']
+        node.metal_qualifiers = data['metal_qualifiers']
+        
+        # Restore optimization metadata
+        for key, value in data['optimization_metadata'].items():
+            setattr(node.optimization_metadata, key, value)
+            
+        # Restore validation state
+        node.validation_errors = [
+            ValidationError(**err) for err in data['validation_errors']
+        ]
+        node.translation_warnings = data['translation_warnings']
+        
+        # Restore children
+        for child_data in data['children']:
+            child = CudaASTNode.from_json(child_data)
+            node.add_child(child)
+            
+        return node
+        
+    def __repr__(self) -> str:
+        """String representation for debugging"""
+        return (
+            f"{self.__class__.__name__}("
+            f"type={self.node_type.name}, "
+            f"spelling='{self.spelling}', "
+            f"metal_type='{self.metal_type}', "
+            f"opt_opportunities={self.optimization_opportunities})"
+        )
 
-        # Strength reduction
-        if op['operator'] == '*' and self._is_power_of_two(op.get('right')):
-            optimized['operator'] = '<<'
-            optimized['right'] = self._log2(op['right'])
+    def __eq__(self, other: object) -> bool:
+        """Equality comparison"""
+        if not isinstance(other, CudaASTNode):
+            return NotImplemented
+            
+        return (
+            self.node_type == other.node_type and
+            self.spelling == other.spelling and
+            self.source_type == other.source_type and
+            self.metal_type == other.metal_type and
+            self.children == other.children
+        )
 
-        # Vector operation opportunities
-        elif self._can_vectorize_operation(op):
-            optimized['vectorized'] = True
-            optimized['vector_width'] = 4
+    def __hash__(self) -> int:
+        """Hash for collections"""
+        return hash((
+            self.node_type,
+            self.spelling,
+            self.source_type,
+            self.metal_type
+        ))
 
-        return optimized
-
-    def _optimize_unary_operation(self, op: Dict[str, Any]) -> Dict[str, Any]:
-        """Optimize unary operation"""
-        optimized = op.copy()
-
-        if op['operator'] == '-' and self._can_fuse_with_next(op):
-            optimized['fused_with_next'] = True
-
-        return optimized
-
-    def _optimize_math_function(self, op: Dict[str, Any]) -> Dict[str, Any]:
-        """Optimize math function"""
-        optimized = op.copy()
-
-        if self.optimization_level >= OptimizationLevel.BASIC:
-            optimized['use_fast_math'] = True
-
-        if op['function'] == 'pow' and self._is_constant_integer(op.get('exponent')):
-            optimized['unrolled'] = True
-
-        return optimized
-
-    @staticmethod
-    def _is_power_of_two(n: Any) -> bool:
-        """Check if a number is a power of two"""
-        if not isinstance(n, (int, float)):
-            return False
-        return n > 0 and (n & (n - 1)) == 0
-
-    @staticmethod
-    def _log2(n: int) -> int:
-        """Calculate integer log2"""
-        return n.bit_length() - 1
-
-    def _can_vectorize_operation(self, op: Dict[str, Any]) -> bool:
-        """Check if operation can be vectorized"""
-        return (self.optimization_level >= OptimizationLevel.BASIC and
-                op.get('data_type') in ('float', 'int32_t', 'uint32_t') and
-                not op.get('has_side_effects', False))
-
-    def _can_fuse_with_next(self, op: Dict[str, Any]) -> bool:
-        """Check if operation can be fused with next operation"""
-        return (self.optimization_level >= OptimizationLevel.AGGRESSIVE and
-                not op.get('has_side_effects', False))
-
-    @staticmethod
-    def _is_constant_integer(value: Any) -> bool:
-        """Check if value is a constant integer"""
-        return isinstance(value, int)
-Class: ('CudaASTNode', '')
+# Register logger
+logger.info("CudaASTNode base class initialized with complete Metal support")
+Class: ('NodeType', '(Enum)')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
-Class: ('MetalFeatureSet', '')
+Class: ('SourceLocation', '')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
-Class: ('CudaBuiltinVariableNode', '(CudaASTNode)')
+Class: ('MetalOptimizationMetadata', '')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
-Class: ('CudaBuiltinVariableNode', '(CudaASTNode)')
+Class: ('MetalResourceLimits', '')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
-Class: ('MetalVersion', '(Enum)')
+Class: ('ValidationError', '')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('MetalGPUFamily', '(Enum)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('MetalFeatureSet', '')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
 Class: ('CudaASTNode', '')
 --------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('FunctionNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('KernelNode', '(FunctionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('VariableNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('StatementNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('ExpressionNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('BinaryOperatorNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('UnaryOperatorNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CallExpressionNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('MemberAccessNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('ArraySubscriptNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CompoundStatementNode', '(StatementNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('IfStatementNode', '(StatementNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('ForStatementNode', '(StatementNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('ReturnStatementNode', '(StatementNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CastExpressionNode', '(ExpressionNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaSharedMemoryNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaAtomicOperationNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaTextureNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaMallocNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaMemcpyNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaSyncthreadsNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaEventNode', '(CudaASTNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaEventCreateNode', '(CudaEventNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaEventRecordNode', '(CudaEventNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('CudaEventSynchronizeNode', '(CudaEventNode)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('AccessPattern', '(Enum)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('OptimizationLevel', '(Enum)')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
-
-Class: ('MetalOptimizer', '')
---------------------------------------------------------------------------------
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.spelling, self.spelling)
-  Method: get(self.return_type, self.return_type)
-  Method: get('block_dim', {})
-  Method: get('x', 256)
-  Method: get('y', 1)
-  Method: get('z', 1)
-  Method: get(base_type, base_type)
-  Method: get(operator, operator)
-  Method: get(operator, operator)
-  Method: get(func_name, func_name)
-  Method: get('requires_side_effects', False)
-  Method: get(self.target_type, self.target_type)
-  Method: get(self.operation)
-  Method: get(self.type, 'float')
-  Method: get('scope', 'threadgroup')
-  Method: get('required_by_dependency', True)
-  Method: get('scope')
-  Method: get('scope')
-  Method: get('memory_access_only', False)
-  Method: get('right')
-  Method: get('exponent')
-  Method: get('data_type')
-  Method: get('has_side_effects', False)
-  Method: get('has_side_effects', False)
 
 
 --------------------------------------------------------------------------------
@@ -11355,7 +10374,11 @@ Class: ('ThreadHierarchyMapper', '')
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\translator\__init__.py
 
+from core import CudaTranslator
+from kernel_translator import KernelTranslator
+from .host_adapter import HostAdapter
 
+__all__ = ['CudaTranslator', 'KernelTranslator', 'HostAdapter']
 
 --------------------------------------------------------------------------------
 
