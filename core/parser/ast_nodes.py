@@ -1,12 +1,18 @@
-"""
-Core AST node definitions for CUDA-to-Metal translation.
-Provides comprehensive type system and node hierarchy for robust AST manipulation.
-"""
-
 from __future__ import annotations
 from typing import Dict, List, Optional, Union, Any, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from threading import Lock
+
+from ...utils.error_handler import CudaTranslationError
+from ...utils.logger import get_logger
+from ...utils.metal_equivalents import METAL_EQUIVALENTS
+from ...utils.mapping_tables import (
+    CUDA_TO_METAL_TYPE_MAP,
+    METAL_FUNCTIONS,
+    METAL_QUALIFIERS
+)
+
 
 
 # Define CUDA Types

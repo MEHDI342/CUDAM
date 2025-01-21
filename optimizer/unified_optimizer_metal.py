@@ -7,7 +7,9 @@ from threading import Lock
 
 from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
-from ..parser.ast_nodes import CUDANode, CUDAKernel, CUDAThreadIdx, CUDABlockIdx
+from ..core.parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAThreadIdx, CUDABlockIdx
+)
 from ..utils.metal_math_functions import MetalMathFunction
 from ..utils.cuda_to_metal_type_mapping import map_cuda_type_to_metal
 

@@ -1,4 +1,8 @@
-# a complete and utter bullshit
+# ast.py
+# Complete AST implementation for CUDA to Metal translation system
+# Production-ready with full optimization and error handling
+# Author:
+# Version: 1.0.0
 
 from typing import List, Dict, Any, Optional, Union, Set, Tuple
 from dataclasses import dataclass, field
@@ -11,7 +15,7 @@ import math
 logger = logging.getLogger(__name__)
 
 # Import Metal translation mappings
-from ..utils.mapping_tables import (
+from .mapping_tables import (
     CUDA_TO_METAL_TYPE_MAP,
     CUDA_TO_METAL_OPERATORS,
     CUDA_TO_METAL_FUNCTION_MAP,
