@@ -8,7 +8,9 @@ from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
 from ..utils.metal_equivalents import get_metal_equivalent
 from ..utils.mapping_tables import MetalMappingRegistry
-from ..parser.ast_nodes import CUDAKernel, CUDANode
+from ..core.parser.ast_nodes import (
+    CUDAKernel, CUDANode, CUDAType, CUDAQualifier
+)
 
 logger = get_logger(__name__)
 
