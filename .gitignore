@@ -21,3 +21,4 @@ CUDAM/problems.py
 
 # Avoid pylint error outputs and logs
 *.pylint.log
+babouchka.txt
