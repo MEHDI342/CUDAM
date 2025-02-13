@@ -1,5 +1,5 @@
 """
-imports
+imports are a hell of a drug
 """
 import time
 import os
@@ -26,11 +26,16 @@ from pathlib import Path
 import logging
 import clang.cindex
 from clang.cindex import Index, TranslationUnit, Cursor, CursorKind, TypeKind
+from ..core.parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAParameter, CUDASharedMemory, CUDAType,
+    CUDAExpressionNode, CUDAStatement, VariableNode, CUDAQualifier,
+    CUDANodeType, CUDAThreadIdx, CUDABlockIdx, CUDAKernel as KernelNode,
+    FunctionNode
+)
 
 # Internal project imports
 from ..core.parser.ast_nodes import (
-    CUDANode, KernelNode, FunctionNode, VariableNode,
-    CompoundStmtNode, ExpressionNode, StatementNode,
+    ExpressionNode, StatementNode,
     ThreadHierarchyNode, MemoryModelNode, CUDAType,
     CUDAQualifier, OptimizationNode
 )

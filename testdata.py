@@ -81,7 +81,7 @@ def save_content_to_txt(directory, output_file):
 
 # Usage
 project_directory = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM"
-output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\backend_content.txt"
+output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\babouchka.txt"
 
 try:
     save_content_to_txt(project_directory, output_file)

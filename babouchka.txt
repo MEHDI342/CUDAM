@@ -3,12 +3,10 @@ Project Structure:
 ├── CUDAM/
 │   ├── .gitignore
 │   ├── 2.0
-│   ├── backend_content.txt
-│   ├── dummy.py
+│   ├── babouchka.txt
 │   ├── LICENSE
 │   ├── LICENSE.md
 │   ├── problems.py
-│   ├── projett_content.txt
 │   ├── pylint_errors.txt
 │   ├── README.md
 │   ├── requirements.txt
@@ -38,6 +36,7 @@ Project Structure:
 │   │   │   ├── __init__.py
 │   │   ├── translator/
 │   │   │   ├── host_translator.py
+│   │   │   ├── kernel_translator.py
 │   ├── docs/
 │   │   ├── api_reference.md
 │   │   ├── developer_guide.md
@@ -54,9 +53,6 @@ Project Structure:
 │   │   ├── msl_generator.py
 │   │   ├── objc_generator.py
 │   │   ├── swift_generator.py
-│   │   ├── __init__.py
-│   ├── gui/
-│   │   ├── main.py
 │   │   ├── __init__.py
 │   ├── native/
 │   │   ├── metal_interop.h
@@ -137,417 +133,6 @@ Project Structure:
 ================================================================================
 
 Frontend File Contents:
-
-File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\dummy.py
-
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
-from pptx.dml.color import RGBColor
-import re
-from typing import Optional, Dict, Any
-import logging
-import sys
-
-# Configure enterprise logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('presentation_generator.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# Enterprise configuration constants
-class PresentationConfig:
-    TITLE_FONT_SIZE: int = 44
-    SUBTITLE_FONT_SIZE: int = 32
-    BASE_CONTENT_SIZE: int = 28
-    LEVEL_REDUCTION: int = 2
-    SLIDE_WIDTH: int = 16
-    SLIDE_HEIGHT: int = 9
-
-    # Corporate colors
-    BLACK: RGBColor = RGBColor(0, 0, 0)
-    GRAY: RGBColor = RGBColor(89, 89, 89)
-    ACCENT: RGBColor = RGBColor(0, 112, 192)
-
-class EnterpriseSlideGenerator:
-    """Enterprise-grade PowerPoint slide generation system with comprehensive error handling."""
-
-    def __init__(self) -> None:
-        """Initialize presentation with enterprise configuration."""
-        self.prs = Presentation()
-        self.prs.slide_width = Inches(PresentationConfig.SLIDE_WIDTH)
-        self.prs.slide_height = Inches(PresentationConfig.SLIDE_HEIGHT)
-        logger.info("Initialized EnterpriseSlideGenerator with standard configuration")
-
-    def create_presentation(self, content: str, output_file: str) -> None:
-        """
-        Create complete enterprise presentation with comprehensive error handling.
-
-        Args:
-            content (str): Markdown-formatted presentation content
-            output_file (str): Output file path for the presentation
-        """
-        try:
-            slides_content = content.split('______________\n')
-
-            for i, slide_content in enumerate(slides_content):
-                if i == 0:
-                    self._create_title_slide(slide_content)
-                else:
-                    self._create_content_slide(slide_content)
-
-            self.prs.save(output_file)
-            logger.info(f"Successfully generated presentation: {output_file}")
-
-        except Exception as e:
-            logger.error(f"Error generating presentation: {str(e)}")
-            raise
-
-    def _create_title_slide(self, content: str) -> None:
-        """Create enterprise-formatted title slide with error handling."""
-        try:
-            lines = content.split('\n')
-            title = lines[0].strip('# ')
-            subtitle = lines[1].strip('## ')
-            sub_subtitle = lines[2].strip('### ')
-
-            slide = self.prs.slides.add_slide(self.prs.slide_layouts[0])
-            title_shape = slide.shapes.title
-            subtitle_shape = slide.placeholders[1]
-
-            title_shape.text = title
-            subtitle_shape.text = f"{subtitle}\n{sub_subtitle}"
-
-            self._format_title_text(title_shape.text_frame)
-            self._format_subtitle_text(subtitle_shape.text_frame)
-
-        except Exception as e:
-            logger.error(f"Error creating title slide: {str(e)}")
-            raise
-
-    def _create_content_slide(self, content: str) -> None:
-        """Create enterprise-formatted content slide with comprehensive error handling."""
-        try:
-            slide = self.prs.slides.add_slide(self.prs.slide_layouts[1])
-            shapes = slide.shapes
-
-            sections = content.split('\n\n')
-            if not sections:
-                raise ValueError("Invalid slide content: No sections found")
-
-            title = sections[0].strip('# ')
-            title_shape = shapes.title
-            title_shape.text = title
-            self._format_title_text(title_shape.text_frame)
-
-            body_shape = shapes.placeholders[1]
-            tf = body_shape.text_frame
-            tf.clear()
-
-            for section in sections[1:]:
-                self._add_formatted_content(tf, section)
-
-        except Exception as e:
-            logger.error(f"Error creating content slide: {str(e)}")
-            raise
-
-    def _format_title_text(self, frame) -> None:
-        """Apply enterprise title formatting with error handling."""
-        try:
-            p = frame.paragraphs[0]
-            p.font.size = Pt(PresentationConfig.TITLE_FONT_SIZE)
-            p.font.bold = True
-            p.font.color.rgb = PresentationConfig.BLACK
-        except Exception as e:
-            logger.error(f"Error formatting title text: {str(e)}")
-            raise
-
-    def _format_subtitle_text(self, frame) -> None:
-        """Apply enterprise subtitle formatting with error handling."""
-        try:
-            p = frame.paragraphs[0]
-            p.font.size = Pt(PresentationConfig.SUBTITLE_FONT_SIZE)
-            p.font.color.rgb = PresentationConfig.GRAY
-        except Exception as e:
-            logger.error(f"Error formatting subtitle text: {str(e)}")
-            raise
-
-    def _add_formatted_content(self, tf, content: str) -> None:
-        """Add formatted content with proper hierarchy and error handling."""
-        try:
-            lines = content.strip().split('\n')
-
-            for line in lines:
-                if not line.strip():
-                    continue
-
-                level = self._determine_level(line)
-                clean_line = self._clean_line(line)
-
-                p = tf.add_paragraph()
-                p.text = clean_line
-                p.level = level
-
-                self._format_paragraph(p, level)
-
-        except Exception as e:
-            logger.error(f"Error adding formatted content: {str(e)}")
-            raise
-
-    def _determine_level(self, line: str) -> int:
-        """Determine content hierarchy level with validation."""
-        try:
-            if line.startswith('o'):
-                return 2
-            if line.startswith('•'):
-                return 1
-            return 0
-        except Exception as e:
-            logger.error(f"Error determining content level: {str(e)}")
-            raise
-
-    def _clean_line(self, line: str) -> str:
-        """Clean line formatting markers with validation."""
-        try:
-            return line.lstrip('o• ').strip()
-        except Exception as e:
-            logger.error(f"Error cleaning line: {str(e)}")
-            raise
-
-    def _format_paragraph(self, p, level: int) -> None:
-        """Apply enterprise paragraph formatting with error handling."""
-        try:
-            p.font.size = Pt(PresentationConfig.BASE_CONTENT_SIZE - (level * PresentationConfig.LEVEL_REDUCTION))
-            p.font.color.rgb = PresentationConfig.BLACK
-            if level == 0:
-                p.font.bold = True
-        except Exception as e:
-            logger.error(f"Error formatting paragraph: {str(e)}")
-            raise
-
-def create_presentation(content: str, output_file: str) -> None:
-    """
-    Create enterprise presentation with comprehensive error handling.
-
-    Args:
-        content (str): Markdown-formatted presentation content
-        output_file (str): Output file path for the presentation
-    """
-    try:
-        generator = EnterpriseSlideGenerator()
-        generator.create_presentation(content, output_file)
-    except Exception as e:
-        logger.error(f"Error in presentation creation: {str(e)}")
-        raise
-
-def main():
-    """Main execution with complete content implementation."""
-    markdown_content = """# L'Intelligence Artificielle : Solutions et Applications
-## Analyse d'Implémentation 
-### SOCOBAT - Transformation Digitale 2024
-
-______________
-
-# Domaines d’application de l’IA : Exemples spécifiques
-## Étude de Marché sur l’Utilisation de l’IA dans l’Assistance Client
-
-### Exemples Spécifiques
-
-• Exemple 1 : Société Générale
-o Utilisation de chatbots IA pour répondre aux demandes des clients en ligne.
-o Résultat : réduction significative des délais de réponse, amélioration de la satisfaction client grâce à des réponses rapides et précises.
-
-• Exemple 2 : Amazon
-o Intégration d’assistants virtuels pour gérer les interactions client.
-o Résultat : personnalisation accrue des échanges et réduction des coûts opérationnels en automatisant les requêtes les plus courantes.
-
-______________
-
-# Production
-## Technologies Avancées
-
-### Exemples de Production
-
-• Exemple 1 : Bouygues Construction
-o Utilisation de l’IA pour la gestion des chantiers, notamment pour surveiller les délais et optimiser les ressources.
-o Résultat : réduction des retards dans les projets et meilleure coordination des équipes.
-
-• Exemple 2 : VESTACK
-o Intégration d’algorithmes prédictifs pour optimiser les processus de construction écologique.
-o Résultat : diminution des coûts énergétiques et des émissions de CO₂ grâce à des simulations en temps réel.
-
-______________
-
-# Finance et Comptabilité
-## Optimisation des Processus
-
-### Exemples en Finance
-
-• Exemple 1 : Cogedis
-o Automatisation des processus de comptabilité grâce à l’IA.
-o Résultat : amélioration de 30 % de l’efficacité des opérations et réduction des erreurs dans les calculs financiers.
-
-• Exemple 2 : ENGIE
-o Analyse prédictive des flux financiers pour anticiper les tendances du marché.
-o Résultat : prise de décision plus rapide et fiable grâce à une meilleure visibilité des données financières.
-
-______________
-
-# Gestion d’approvisionnement
-## Solutions Logistiques
-
-### Exemple en Gestion d’Approvisionnement
-
-• Exemple unique : Suffolk Construction
-o Mise en place d’algorithmes d’IA pour prévoir les besoins en matériaux et optimiser les délais de livraison.
-o Résultat : réduction des coûts logistiques et anticipation des pénuries grâce à des données en temps réel.
-
-______________
-
-# Sécurité des employés
-## Surveillance Intelligente
-
-### Exemples en Sécurité
-
-• Exemple 1 : IBM
-o Déploiement de systèmes IA pour surveiller les comportements et détecter les risques sur les lieux de travail.
-o Résultat : réduction des incidents de sécurité et meilleure conformité aux normes.
-
-• Exemple 2 : Siemens
-o Utilisation de l’IA pour analyser les données des équipements et prévenir les défaillances.
-o Résultat : diminution des accidents liés à l’utilisation de machines défectueuses.
-
-______________
-
-# Startups dans la région de Socobat : Présentation et témoignages
-## Écosystème Local
-
-### Finance et Comptabilité : Yooz (Lyon)
-
-• Présentation :
-Yooz se concentre sur l’automatisation comptable, simplifiant la gestion des factures.
-o Témoignage :
-Brico Privé a constaté une transparence accrue dans ses processus grâce à Yooz, améliorant les relations avec les fournisseurs.
-
-### Logistique et Gestion de la Chaîne d'Approvisionnement
-
-• Kardinal (Lyon) :
-Optimisation des tournées de livraison à l’aide d’algorithmes avancés.
-o Témoignage :
-DPD France a observé une augmentation de 4 % dans le respect des créneaux horaires grâce aux solutions Kardinal.
-
-• Aitenders (Saint-Étienne) :
-Automatisation des appels d’offres pour réduire les tâches manuelles et améliorer les sélections.
-o Témoignage :
-Une entreprise cliente a réduit de 90 % les opportunités non pertinentes, se concentrant sur les offres qualifiées.
-
-### Service Client, Sécurité et Production : Wevioo (Lyon)
-
-Wevioo accompagne les entreprises dans leur transformation digitale, en optimisant la production, la maintenance prédictive et la sécurité des employés grâce à des solutions basées sur l’intelligence artificielle.
-o Témoignage :
-Une entreprise industrielle a collaboré avec Wevioo pour intégrer des systèmes de maintenance prédictive, permettant de réduire les coûts et d’améliorer la productivité globale.
-
-______________
-
-# L’impact de l’intégration de l’IA : Pourcentages clés
-## Métriques Clés
-
-### Finance et Comptabilité
-
-• Réduction des coûts administratifs : 20-30 %.
-• Amélioration de la productivité : 25 %.
-
-### Logistique et Gestion de la chaîne d'approvisionnement
-
-• Réduction des coûts logistiques : 15-20 %.
-• Amélioration de l’efficacité des chaînes d’approvisionnement : 20 %.
-
-### Service Client et Assistance
-
-• Réduction des coûts de service client : 30 %.
-• Temps de réponse amélioré : 50 %.
-
-### Sécurité des Employés
-
-• Réduction des incidents liés à la sécurité : 10-15 %.
-• Amélioration de la conformité : 20 %.
-
-### Production
-
-• Réduction des coûts de maintenance : 15-30 %.
-• Amélioration de la productivité : 20 %.
-
-______________
-
-# Défis de l’intégration de l’IA dans l’entreprise et solutions
-## Obstacles et Solutions
-
-### Défi 1 : Coût élevé de mise en œuvre
-
-• Solution :
-o Déployer des projets pilotes avant un déploiement global.
-o Rechercher des subventions et aides publiques.
-
-### Défi 2 : Résistance au changement interne
-
-• Solution :
-o Impliquer les employés dès le début.
-o Proposer des formations adaptées.
-
-### Défi 3 : Données insuffisantes ou de mauvaise qualité
-
-• Solution :
-o Mettre en place un processus de collecte et de nettoyage des données.
-o Centraliser les données pour une meilleure accessibilité.
-
-### Défi 4 : Complexité technologique
-
-• Solution :
-o Collaborer avec des experts en IA.
-o Simplifier les processus pour faciliter l’adoption.
-
-### Défi 5 : Risques éthiques et réglementaires
-
-• Solution :
-o Garantir la transparence des algorithmes.
-o Respecter les réglementations, comme le RGPD.
-
-### Défi 6 : Temps nécessaire pour constater des résultats
-
-• Solution :
-o Fixer des attentes réalistes et des objectifs intermédiaires.
-o Mesurer les résultats par des indicateurs de performance.
-
-### Défi 7 : Cybersécurité
-
-• Solution :
-o Investir dans des outils de sécurité avancés.
-o Former les équipes aux bonnes pratiques 
-"""
-
-    try:
-        create_presentation(markdown_content, 'SOCOBAT_IA_Implementation.pptx')
-        logger.info("Presentation generation completed successfully")
-    except Exception as e:
-        logger.error(f"Fatal error in presentation generation: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    main()
-
-Class: ('PresentationConfig', '')
---------------------------------------------------------------------------------
-
-Class: ('EnterpriseSlideGenerator', '')
---------------------------------------------------------------------------------
-
-
---------------------------------------------------------------------------------
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\problems.py
 
@@ -747,7 +332,7 @@ def save_content_to_txt(directory, output_file):
 
 # Usage
 project_directory = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM"
-output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\backend_content.txt"
+output_file = r"C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\babouchka.txt"
 
 try:
     save_content_to_txt(project_directory, output_file)
@@ -1470,16 +1055,155 @@ File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\cli\__init__.py
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\core\parser\ast_nodes.py
 
-"""
-Core AST node definitions for CUDA-to-Metal translation.
-Provides comprehensive type system and node hierarchy for robust AST manipulation.
-"""
+from __future__ import annotations
+from typing import Dict, List, Optional, Union, Any, Set, Tuple
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from threading import Lock
+
+from ...utils.error_handler import CudaTranslationError
+from ...utils.logger import get_logger
+from ...utils.metal_equivalents import METAL_EQUIVALENTS
+from ...utils.mapping_tables import (
+    CUDA_TO_METAL_TYPE_MAP,
+    METAL_FUNCTIONS,
+    METAL_QUALIFIERS
+)
+
+# CUDAM/core/parser/ast_nodes.py
 
 from __future__ import annotations
 from typing import Dict, List, Optional, Union, Any, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+@dataclass
+class CUDAExpressionNode:
+    """
+    Maps to CUDA expression nodes following NVIDIA PTX ISA specification.
+    Ref: https://docs.nvidia.com/cuda/parallel-thread-execution/
+    """
+    kind: str                    # Expression type (e.g., binary, unary)
+    operator: Optional[str]      # Operator symbol
+    left: Optional['CUDAExpressionNode'] = None  # Left operand
+    right: Optional['CUDAExpressionNode'] = None # Right operand
+    type_info: Dict[str, Any] = field(default_factory=dict)  # Type information
+    ptx_instruction: Optional[str] = None  # Corresponding PTX instruction
+    is_predicated: bool = False  # Whether expression is predicated
+    alignment: Optional[int] = None  # Memory alignment requirement
+
+@dataclass
+class CUDAMemoryNode:
+    """
+    Represents CUDA memory hierarchy following hardware memory model.
+    Ref: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-hierarchy
+    """
+    space: str  # global, shared, local, constant, texture
+    size: int   # Size in bytes
+    alignment: int  # Memory alignment
+    is_volatile: bool = False
+    cache_operation: Optional[str] = None  # Cache operation hints
+    memory_space_qualifier: Optional[str] = None  # __shared__, __constant__ etc.
+
+    # Memory scope flags matching CUDA memory model
+    is_global: bool = False
+    is_shared: bool = False
+    is_constant: bool = False
+    is_local: bool = False
+    is_texture: bool = False
+
+@dataclass
+class CUDAThreadNode:
+    """
+    Maps to CUDA thread hierarchy specification.
+    Ref: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy
+    """
+    grid_dim: Tuple[int, int, int]      # grid.{x,y,z}
+    block_dim: Tuple[int, int, int]     # block.{x,y,z}
+    thread_idx: Tuple[int, int, int]    # threadIdx.{x,y,z}
+    block_idx: Tuple[int, int, int]     # blockIdx.{x,y,z}
+    warp_size: int = 32                 # Hardware warp size
+    max_threads_per_block: int = 1024   # Hardware thread limit
+
+    def get_global_thread_id(self) -> Tuple[int, int, int]:
+        """Calculate global thread ID following CUDA indexing model."""
+        return (
+            self.block_idx[0] * self.block_dim[0] + self.thread_idx[0],
+            self.block_idx[1] * self.block_dim[1] + self.thread_idx[1],
+            self.block_idx[2] * self.block_dim[2] + self.thread_idx[2]
+        )
+
+@dataclass
+class CUDNNNode:
+    """
+    Represents cuDNN operations matching NVIDIA's deep learning primitives.
+    Ref: https://docs.nvidia.com/deeplearning/cudnn/api/
+    """
+    operation: str           # Operation type (conv, pool, etc)
+    tensor_format: str      # NCHW, NHWC, etc
+    data_type: str          # Data type specification
+    algorithm: Optional[str] = None  # cuDNN algorithm selection
+    workspace_size: int = 0  # Workspace memory requirement
+    math_type: str = 'CUDNN_DEFAULT_MATH'  # Math type specification
+
+    # cuDNN-specific parameters
+    conv_mode: Optional[str] = None  # CUDNN_CONVOLUTION, CUDNN_CROSS_CORRELATION
+    filter_algo: Optional[str] = None # Convolution algorithm
+    tensor_op_math: bool = False     # Whether to use tensor cores
+    deterministic: bool = False      # Whether to use deterministic algorithms
+
+@dataclass
+class PTXInstructionNode:
+    """
+    Represents PTX instructions for CUDA kernel compilation.
+    Ref: https://docs.nvidia.com/cuda/parallel-thread-execution/
+    """
+    opcode: str            # PTX operation code
+    predicate: Optional[str] = None  # Predicate register
+    destination: Optional[str] = None # Destination register
+    operands: List[str] = field(default_factory=list)  # Source operands
+    modifiers: List[str] = field(default_factory=list) # Instruction modifiers
+
+    def to_ptx(self) -> str:
+        """Generate PTX assembly instruction."""
+        pred = f"@{self.predicate} " if self.predicate else ""
+        mods = "." + ".".join(self.modifiers) if self.modifiers else ""
+        ops = ", ".join(self.operands)
+        return f"{pred}{self.opcode}{mods} {self.destination}, {ops};"
+
+# Hardware-specific constants matching NVIDIA GPU architecture
+CUDA_HARDWARE_LIMITS = {
+    'MAX_THREADS_PER_BLOCK': 1024,
+    'MAX_BLOCK_DIMENSIONS': (1024, 1024, 64),
+    'MAX_GRID_DIMENSIONS': (2**31-1, 65535, 65535),
+    'WARP_SIZE': 32,
+    'MAX_REGISTERS_PER_BLOCK': 65536,
+    'MAX_SHARED_MEMORY_PER_BLOCK': 49152,  # 48KB
+    'MAX_SHARED_MEMORY_PER_MULTIPROCESSOR': 49152,
+    'MAX_REGISTERS_PER_MULTIPROCESSOR': 65536,
+    'MAX_WARPS_PER_MULTIPROCESSOR': 64,
+    'MAX_THREADS_PER_MULTIPROCESSOR': 2048
+}
+
+# cuDNN algorithm enums matching NVIDIA specifications
+CUDNN_ALGORITHMS = {
+    'CONVOLUTION_FWD': [
+        'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM',
+        'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM',
+        'CUDNN_CONVOLUTION_FWD_ALGO_GEMM',
+        'CUDNN_CONVOLUTION_FWD_ALGO_DIRECT',
+        'CUDNN_CONVOLUTION_FWD_ALGO_FFT',
+        'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING',
+        'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD',
+        'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED'
+    ],
+    'POOLING': [
+        'CUDNN_POOLING_MAX',
+        'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING',
+        'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING',
+        'CUDNN_POOLING_MAX_DETERMINISTIC'
+    ]
+}
 
 # Define CUDA Types
 class CUDAType(Enum):
@@ -1632,26 +1356,124 @@ class SourceLocation:
 
 
 # CUDA Expression Node
-@dataclass
-class CUDAExpressionNode(CUDANode):
-    """Represents an expression in CUDA code"""
-    kind: str
-    operator: Optional[str] = None
-    left: Optional[CUDAExpressionNode] = None
-    right: Optional[CUDAExpressionNode] = None
-    operand: Optional[CUDAExpressionNode] = None
-    function: Optional[str] = None
-    arguments: List[CUDAExpressionNode] = field(default_factory=list)
-    array: Optional[CUDAExpressionNode] = None
-    index: Optional[CUDAExpressionNode] = None
-    base: Optional[CUDAExpressionNode] = None
-    member: Optional[str] = None
-    condition: Optional[CUDAExpressionNode] = None
-    then_expression: Optional[CUDAExpressionNode] = None
-    else_expression: Optional[CUDAExpressionNode] = None
-    elements: List[CUDAExpressionNode] = field(default_factory=list)
-    spelling: Optional[str] = None
+class CUDAExpressionNode:
+    def __init__(self, kind: str, operator: Optional[str] = None):
+        # Extended init for Metal optimization
+        self.kind = kind
+        self.operator = operator
+        self.metal_equivalent = self._get_metal_operator()
+        self.optimization_hints = {
+            'vectorizable': False,
+            'coalesced_access': False,
+            'simd_friendly': False
+        }
+        self._validate_metal_compatibility()
 
+    def _get_metal_operator(self) -> Optional[str]:
+        """Map CUDA operator to Metal equivalent with validation."""
+        if not self.operator:
+            return None
+        return METAL_OPERATORS.get(self.operator, self.operator)
+
+    def _validate_metal_compatibility(self) -> None:
+        """Validate expression compatibility with Metal."""
+        if self.kind not in VALID_METAL_EXPRESSIONS:
+            raise CudaTranslationError(
+                f"Expression type '{self.kind}' not supported in Metal"
+            )
+
+class CUDAKernel:
+    def __init__(self, name: str, return_type: CUDAType,
+                 parameters: List[CUDAParameter], body: CUDACompoundStmt,
+                 line: int, column: int):
+        super().__init__(name, return_type, parameters, body, line, column)
+        self.add_qualifier(CUDAQualifier.GLOBAL)
+
+        # Enhanced Metal-specific attributes
+        self.thread_execution_width = 32  # Metal SIMD width
+        self.metal_specific = {
+            'threadgroup_memory_size': 0,
+            'buffer_bindings': {},
+            'texture_bindings': {},
+            'uniform_bindings': {}
+        }
+
+        # Advanced optimization hints
+        self.optimization_hints = {
+            'threads_per_threadgroup': (256, 1, 1),
+            'threadgroups_per_grid': None,  # Computed at runtime
+            'memory_footprint': 0,
+            'register_pressure': 0,
+            'bank_conflicts': False,
+            'memory_coalescing': True
+        }
+
+    def validate_metal_constraints(self) -> None:
+        """Validate kernel against Metal hardware constraints."""
+        if self.thread_hierarchy['block']['x'] * \
+                self.thread_hierarchy['block']['y'] * \
+                self.thread_hierarchy['block']['z'] > 1024:
+            raise CudaTranslationError(
+                "Thread block size exceeds Metal maximum (1024 threads)"
+            )
+
+class CUDASharedMemory:
+    def __init__(self, name: str, data_type: CUDAType, size: Optional[int],
+                 line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.data_type = data_type
+        self.size = size
+        self.is_dynamic = size is None
+        self.add_qualifier(CUDAQualifier.SHARED)
+
+        # Metal-specific attributes
+        self.threadgroup_alignment = 16
+        self.access_pattern = 'concurrent'  # or 'sequential'
+        self.bank_access_pattern = self._analyze_bank_access()
+
+        # Validate size against Metal limits
+        if self.size and self.size > 32768:  # 32KB Metal limit
+            raise CudaTranslationError(
+                f"Shared memory size {self.size} exceeds Metal limit (32KB)"
+            )
+
+    def _analyze_bank_access(self) -> Dict[str, Any]:
+        """Analyze threadgroup memory bank access patterns."""
+        return {
+            'stride': self._calculate_access_stride(),
+            'conflicts': self._detect_bank_conflicts(),
+            'optimization_hints': self._generate_optimization_hints()
+        }
+
+# Add shared constants for Metal constraints
+METAL_CONSTRAINTS = {
+    'MAX_THREADS_PER_THREADGROUP': 1024,
+    'MAX_THREADGROUPS_PER_GRID': (2**16-1, 2**16-1, 2**16-1),
+    'MAX_THREADGROUP_MEMORY': 32768,  # 32KB
+    'SIMD_WIDTH': 32,
+    'BUFFER_ALIGNMENT': 256,
+    'TEXTURE_ALIGNMENT': 4096
+}
+
+# Add Metal-specific type mappings
+METAL_TYPE_MAPPING = {
+    CUDAType.VOID: "void",
+    CUDAType.INT: "int",
+    CUDAType.UINT: "uint",
+    CUDAType.FLOAT: "float",
+    CUDAType.DOUBLE: "float",  # Metal doesn't support double
+    CUDAType.CHAR: "char",
+    CUDAType.UCHAR: "uchar",
+    CUDAType.SHORT: "short",
+    CUDAType.USHORT: "ushort",
+    CUDAType.LONG: "long",
+    CUDAType.ULONG: "ulong",
+    # Vector types
+    CUDAType.FLOAT4: "float4",
+    CUDAType.INT4: "int4",
+    # Add other vector types as needed
+}
 
 # CUDA Statement Node
 @dataclass
@@ -1921,74 +1743,125 @@ KernelNode = CUDAKernel
 ParameterNode = CUDAParameter
 CompoundStmtNode = CUDACompoundStmt
 
+Class: ('CUDAExpressionNode', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('CUDAMemoryNode', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('CUDAThreadNode', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('CUDNNNode', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('PTXInstructionNode', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
 Class: ('CUDAType', '(Enum)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDAQualifier', '(Enum)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDANodeType', '(Enum)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDANode', '')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('SourceLocation', '')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
-Class: ('CUDAExpressionNode', '(CUDANode)')
+Class: ('CUDAExpressionNode', '')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('CUDAKernel', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
+
+Class: ('CUDASharedMemory', '')
+--------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDAStatement', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('FunctionNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDAKernel', '(FunctionNode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDAParameter', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDASharedMemory', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDAThreadIdx', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDABlockIdx', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CUDACompoundStmt', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('VariableNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('StructNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('EnumNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('TypedefNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('ClassNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('NamespaceNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('TemplateNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CudaASTNode', '(CUDANode)')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 Class: ('CudaTranslationContext', '')
 --------------------------------------------------------------------------------
+  Method: get(self.operator, self.operator)
 
 
 --------------------------------------------------------------------------------
@@ -2199,14 +2072,18 @@ __all__ = [
 
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\core\translator\host_translator.py
 
-from typing import Dict, List, Optional, Union, Any
-from pathlib import Path
+from typing import Dict, Any
 import re
+from pathlib import Path
 
-from ..parser.ast_nodes import (
-    CUDANode, CUDAKernel, CUDAParameter, CUDAType, CUDAQualifier,
-    CUDASharedMemory, CUDAThreadIdx
+from ..utils.error_handler import CudaTranslationError
+from ..utils.logger import get_logger
+from ..core.parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAParameter, CUDAType,
+    CUDAQualifier, CUDASharedMemory, CUDAThreadIdx
 )
+from ..generator.msl_generator import MetalShaderGenerator
+
 
 class CUDAHostTranslator:
     """
@@ -2366,6 +2243,494 @@ Class: ('CUDAHostTranslator', '')
 
 --------------------------------------------------------------------------------
 
+File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\core\translator\kernel_translator.py
+
+import logging
+from typing import List, Optional, Dict, Any, Union
+
+from ...utils.error_handler import CudaTranslationError
+from ..parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAParameter, CUDASharedMemory, CUDAType,
+    CUDAExpressionNode, CUDAStatement, VariableNode, CUDAQualifier,
+    CUDANodeType, CUDAThreadIdx, CUDABlockIdx, CUDAKernel as KernelNode,
+    FunctionNode
+)
+
+logger = logging.getLogger(__name__)
+
+class KernelTranslator:
+    """
+if you're looking at this == thank you it means that you really took time into looking at this shitshow im trying to build if you want to help feel free, ill really use some help
+    """
+
+    def __init__(self):
+        # Optionally store translator-level settings or optimization flags
+        self.enable_debug_comments = True
+
+    def translate_ast(self, root: CUDANode) -> str:
+        """
+        Translate the entire AST (which may contain multiple kernels,
+        device functions, global vars, etc.) into a single .metal source.
+        """
+        metal_lines = []
+
+        # Prologue / headers
+        metal_lines.append("// -- Auto-Generated Metal Code --")
+        metal_lines.append("#include <metal_stdlib>")
+        metal_lines.append("#include <metal_atomic>")
+        metal_lines.append("using namespace metal;\n")
+
+        # Walk top-level children
+        for child in root.children:
+            code = self._translate_node(child, top_level=True)
+            if code:
+                # Separate top-level items with blank lines
+                metal_lines.append(code)
+                metal_lines.append("")
+
+        return "\n".join(metal_lines)
+
+    def _translate_node(self, node: CUDANode, top_level: bool = False, indent: int = 0) -> str:
+        """
+        Main dispatch method for translating an arbitrary AST node to MSL.
+        Calls specialized sub-methods based on node type.
+        """
+        # Distinguish node by its class or qualifiers
+        if isinstance(node, CUDAKernel):
+            return self._translate_kernel(node)
+        elif isinstance(node, FunctionNode):
+            # Device or host function
+            return self._translate_function(node)
+        elif isinstance(node, VariableNode):
+            # Possibly a global var or local var
+            if top_level:
+                return self._translate_global_variable(node)
+            else:
+                return self._translate_local_variable(node, indent)
+        elif isinstance(node, CUDASharedMemory):
+            # Shared memory, translate to threadgroup array
+            return self._translate_shared_memory(node, indent)
+        elif isinstance(node, CUDAExpressionNode):
+            return self._translate_expression(node, indent)
+        elif isinstance(node, CUDAStatement):
+            return self._translate_statement(node, indent)
+        else:
+            # If no specialized method, handle generically
+            return self._translate_generic_node(node, indent)
+
+    # --------------------------------------------------------------------------
+    # KERNEL, FUNCTION, VARIABLE TRANSLATION
+    # --------------------------------------------------------------------------
+    def _translate_kernel(self, kernel: CUDAKernel) -> str:
+        """
+        Translate a __global__ CUDA kernel into a Metal kernel function.
+        """
+        # Kernel signature
+        kernel_name = kernel.name
+        # e.g. "kernel void <name>(uint3 tid [[thread_position_in_grid]])"
+
+        # We can add dynamic threadgroup metadata or attributes:
+        # For example, if the parser computed optimal threads_per_threadgroup
+        # let's say the user sets kernel.optimization_hints['threads_per_threadgroup']
+        threads_per_threadgroup = kernel.optimization_hints.get("threads_per_threadgroup", (256, 1, 1))
+        # We'll store them for a future attribute usage if you want:
+        #   [[threads_per_threadgroup(256,1,1)]]
+
+        lines = []
+        lines.append(f"kernel void {kernel_name}(")
+
+        # Translate parameters
+        param_lines = []
+        for i, param in enumerate(kernel.parameters):
+            param_lines.append(self._translate_kernel_parameter(param, index=i))
+        lines.append("  " + ",\n  ".join(param_lines))
+
+        # We add built-in thread position variables
+        lines.append("  , uint3 gid [[thread_position_in_grid]]")
+        lines.append("  , uint3 tid_in_group [[thread_position_in_threadgroup]]")
+        lines.append("  , uint3 tg_id [[threadgroup_position_in_grid]]")
+        lines.append("  , uint3 tg_size [[threads_per_threadgroup]]")
+        lines.append(") {")
+
+        # Optionally generate a debug comment
+        if self.enable_debug_comments:
+            lines.append(f"  // Kernel: {kernel_name} (line {kernel.line}, col {kernel.column})")
+
+        # Translate kernel body
+        # In the AST, kernel.body might be a compound statement or list of statements
+        for stmt in kernel.body:
+            lines.append(self._translate_node(stmt, indent=1))
+
+        lines.append("}")  # close kernel function
+
+        return "\n".join(lines)
+
+    def _translate_kernel_parameter(self, param: CUDAParameter, index: int) -> str:
+        """
+        Translate a CUDA kernel parameter into a Metal function parameter,
+        including address space and buffer attributes if needed.
+        """
+        # Example: device float* data [[buffer(0)]]
+        # We get the type from param.param_type, and see if it's pointer or not
+        metal_type = self._cuda_type_to_metal(param.param_type)
+        if param.is_pointer:
+            # We'll default to device pointer
+            # Or if the parser says it's "const", we might use "const device"
+            if CUDAQualifier.CONST in param.qualifiers:
+                addr_space = "const device"
+            else:
+                addr_space = "device"
+            return f"{addr_space} {metal_type}* {param.name} [[buffer({index})]]"
+        else:
+            # For a by-value param, just do something like "float param"
+            return f"{metal_type} {param.name}"
+
+    def _translate_function(self, func: FunctionNode) -> str:
+        """
+        Translate a non-kernel function. Often device or host function.
+        Mapped to `inline` or `device` function in MSL.
+        """
+        lines = []
+        func_name = func.name
+        return_type = self._cuda_type_to_metal(func.return_type)
+
+        # See if it's device or host function
+        if func.is_device_func():
+            # We'll call it "inline device" or just "inline"
+            # Some prefer "inline" + "static" to limit scope.
+            signature = f"inline {return_type} {func_name}("
+        else:
+            # If it's neither device nor global, treat as a standard function.
+            signature = f"inline {return_type} {func_name}("
+
+        # Parameters
+        param_strs = []
+        for i, p in enumerate(func.parameters):
+            param_type = self._cuda_type_to_metal(p.param_type)
+            if p.is_pointer:
+                addr_space = "device"
+                if CUDAQualifier.CONST in p.qualifiers:
+                    addr_space = "const device"
+                param_strs.append(f"{addr_space} {param_type}* {p.name}")
+            else:
+                param_strs.append(f"{param_type} {p.name}")
+
+        signature += ", ".join(param_strs)
+        signature += ")"
+
+        lines.append(signature + " {")
+        if self.enable_debug_comments:
+            lines.append(f"  // Function: {func_name}")
+
+        # Function body
+        for stmt in func.body:
+            lines.append(self._translate_node(stmt, indent=1))
+
+        lines.append("}")
+        return "\n".join(lines)
+
+    def _translate_global_variable(self, var_node: VariableNode) -> str:
+        """
+        Translate a global variable (e.g., file-scope variable) into MSL.
+        If it's in shared or constant, we map accordingly. If truly global
+        scope in CUDA, that typically means device or constant memory.
+        """
+        # Memory space logic
+        address_space = "device"
+        if CUDAQualifier.CONST in var_node.qualifiers:
+            address_space = "constant"
+        elif CUDAQualifier.SHARED in var_node.qualifiers:
+            address_space = "threadgroup"
+
+        metal_type = self._cuda_type_to_metal(var_node.var_type)
+        if var_node.is_pointer:
+            # E.g. "device float* myGlobalVar;"
+            return f"{address_space} {metal_type}* {var_node.name};"
+        else:
+            # E.g. "device float myGlobalVar;"
+            return f"{address_space} {metal_type} {var_node.name};"
+
+    def _translate_local_variable(self, var_node: VariableNode, indent: int) -> str:
+        """
+        Translate a local variable declaration within a function or kernel.
+        """
+        pad = "  " * indent
+        metal_type = self._cuda_type_to_metal(var_node.var_type)
+        if var_node.is_pointer:
+            # local pointer
+            return f"{pad}{metal_type}* {var_node.name} = nullptr;"  # or f"thread {metal_type}*"
+        else:
+            return f"{pad}{metal_type} {var_node.name};"
+
+    def _translate_shared_memory(self, shared: CUDASharedMemory, indent: int) -> str:
+        """
+        Translate a __shared__ memory declaration into Metal threadgroup array.
+        """
+        pad = "  " * indent
+        metal_type = self._cuda_type_to_metal(shared.data_type)
+        if shared.size is None:
+            # dynamic shared memory
+            # In Metal, you typically declare threadgroup arrays with a fixed size, or pass size at runtime
+            size_str = "/* dynamic-sized: pass at runtime */"
+        else:
+            size_str = str(shared.size)
+
+        return f"{pad}threadgroup {metal_type} s_{shared.name}[{size_str}];"
+
+    # --------------------------------------------------------------------------
+    # STATEMENTS & EXPRESSIONS
+    # --------------------------------------------------------------------------
+    def _translate_statement(self, stmt: CUDAStatement, indent: int) -> str:
+        """
+        Convert a CUDA statement node into MSL lines.
+        This covers if/for/while/return etc. (in your advanced AST, these might appear).
+        """
+        pad = "  " * indent
+        kind = stmt.kind.lower()
+
+        if "if" in kind:
+            code_lines = []
+            code_lines.append(f"{pad}if ({self._translate_expression(stmt.condition, 0)}) {{")
+            for c in stmt.then_branch:
+                code_lines.append(self._translate_node(c, indent+1))
+            code_lines.append(f"{pad}}}")
+            if stmt.else_branch:
+                code_lines.append(f"{pad}else {{")
+                for c in stmt.else_branch:
+                    code_lines.append(self._translate_node(c, indent+1))
+                code_lines.append(f"{pad}}}")
+            return "\n".join(code_lines)
+
+        elif "for" in kind:
+            code_lines = []
+            init_str = self._translate_expression(stmt.init, 0) if stmt.init else ""
+            cond_str = self._translate_expression(stmt.condition, 0) if stmt.condition else ""
+            incr_str = self._translate_expression(stmt.increment, 0) if stmt.increment else ""
+            code_lines.append(f"{pad}for ({init_str}; {cond_str}; {incr_str}) {{")
+            for b in stmt.body:
+                code_lines.append(self._translate_node(b, indent+1))
+            code_lines.append(f"{pad}}}")
+            return "\n".join(code_lines)
+
+        elif "while" in kind:
+            code_lines = []
+            cond_str = self._translate_expression(stmt.condition, 0) if stmt.condition else "true"
+            code_lines.append(f"{pad}while ({cond_str}) {{")
+            for b in stmt.body:
+                code_lines.append(self._translate_node(b, indent+1))
+            code_lines.append(f"{pad}}}")
+            return "\n".join(code_lines)
+
+        elif "return" in kind:
+            if stmt.expression:
+                return f"{pad}return {self._translate_expression(stmt.expression, 0)};"
+            else:
+                return f"{pad}return;"
+
+        elif "break" in kind:
+            return f"{pad}break;"
+
+        elif "continue" in kind:
+            return f"{pad}continue;"
+
+        elif "compound" in kind:
+            # Just a block
+            code_lines = []
+            code_lines.append(f"{pad}{{")
+            for c in stmt.body:
+                code_lines.append(self._translate_node(c, indent+1))
+            code_lines.append(f"{pad}}}")
+            return "\n".join(code_lines)
+
+        else:
+            # Possibly an expression statement or unknown
+            if stmt.expression:
+                expr_code = self._translate_expression(stmt.expression, 0)
+                return f"{pad}{expr_code};"
+            else:
+                return f"{pad}// Unknown statement type: {stmt.kind}"
+
+    def _translate_expression(self, expr: CUDAExpressionNode, indent: int) -> str:
+        """
+        Convert a CUDA expression node into MSL code (inline).
+        e.g., handle atomic, barrier, math intrinsics, block/thread indices, etc.
+        """
+        # We won't add indentation for single-line expressions, but we pass `indent` if needed.
+        # We'll do a simpler approach: check operator, function, type of expression, etc.
+        if expr.operator is not None:
+            # e.g., binary operator
+            left_code = self._translate_operand(expr.left)
+            right_code = self._translate_operand(expr.right)
+            return f"({left_code} {expr.operator} {right_code})"
+
+        if expr.function:
+            # e.g., a call to __syncthreads or __expf
+            return self._translate_function_call(expr)
+
+        # Possibly a single operand or reference
+        if expr.operand:
+            return self._translate_operand(expr.operand)
+
+        if expr.spelling:
+            # e.g. a variable or builtin reference
+            return self._translate_builtin_or_var(expr.spelling)
+
+        return "// [expr: unrecognized pattern]"
+
+    def _translate_operand(self, operand: Optional[CUDAExpressionNode]) -> str:
+        """Translate a sub-expression operand. If None, return empty."""
+        if operand is None:
+            return ""
+        return self._translate_expression(operand, 0)
+
+    def _translate_function_call(self, expr: CUDAExpressionNode) -> str:
+        """
+        Map CUDA builtins to Metal intrinsics, handle barrier or atomic calls, etc.
+        """
+        func_name = expr.function.lower()
+
+        # Barrier example: __syncthreads
+        if "syncthreads" in func_name:
+            return "threadgroup_barrier(mem_flags::mem_threadgroup)"
+
+        # Atomic example: atomicAdd, atomicSub, etc.
+        if "atomic" in func_name:
+            return self._translate_atomic_call(expr)
+
+        # Common math intrinsics: __expf, __powf, etc.
+        # Could map __expf(x) -> metal::fast::exp(x), etc.
+        if func_name.startswith("__"):
+            # remove the double underscore
+            mapped_name = self._map_cuda_intrinsic_to_metal(func_name)
+            # Then, join arguments
+            arg_str = ", ".join(self._translate_expression(a, 0) for a in expr.arguments)
+            return f"{mapped_name}({arg_str})"
+
+        # Otherwise, treat as a normal function call
+        arg_str = ", ".join(self._translate_expression(a, 0) for a in expr.arguments)
+        return f"{expr.function}({arg_str})"
+
+    def _translate_builtin_or_var(self, spelling: str) -> str:
+        """
+        For references like blockIdx.x, threadIdx.y, etc., convert to MSL thread references.
+        Otherwise, assume it's a normal variable name.
+        """
+        # e.g. blockIdx.x -> gid.x or tg_id.x ...
+        # threadIdx.x -> tid_in_group.x
+        # We'll do some naive mapping:
+        if spelling == "blockIdx.x":
+            return "tg_id.x"
+        elif spelling == "blockIdx.y":
+            return "tg_id.y"
+        elif spelling == "blockIdx.z":
+            return "tg_id.z"
+        elif spelling == "threadIdx.x":
+            return "tid_in_group.x"
+        elif spelling == "threadIdx.y":
+            return "tid_in_group.y"
+        elif spelling == "threadIdx.z":
+            return "tid_in_group.z"
+        elif spelling == "blockDim.x":
+            return "tg_size.x"
+        elif spelling == "blockDim.y":
+            return "tg_size.y"
+        elif spelling == "blockDim.z":
+            return "tg_size.z"
+        else:
+            # Just a variable or unknown builtin
+            return spelling
+
+    def _translate_atomic_call(self, expr: CUDAExpressionNode) -> str:
+        """Translate atomicAdd/atomicSub to Metal atomic_fetch_* calls."""
+        if expr.function.lower() == "atomicadd":
+            # Typically the first argument is pointer, second is value
+            if len(expr.arguments) >= 2:
+                ptr_code = self._translate_expression(expr.arguments[0], 0)
+                val_code = self._translate_expression(expr.arguments[1], 0)
+                return f"atomic_fetch_add_explicit({ptr_code}, {val_code}, memory_order_relaxed)"
+        elif expr.function.lower() == "atomicsub":
+            if len(expr.arguments) >= 2:
+                ptr_code = self._translate_expression(expr.arguments[0], 0)
+                val_code = self._translate_expression(expr.arguments[1], 0)
+                # There's no direct atomic_sub in MSL, we can emulate via atomic_fetch_sub_explicit
+                return f"atomic_fetch_sub_explicit({ptr_code}, {val_code}, memory_order_relaxed)"
+
+        # If we don't handle it explicitly
+        return f"// Unrecognized atomic call: {expr.function}"
+
+    def _map_cuda_intrinsic_to_metal(self, func_name: str) -> str:
+        """
+        Map __expf, __sinf, etc. to their Metal equivalents.
+        For demonstration, we do some common mappings.
+        """
+        if "__expf" in func_name:
+            return "exp"
+        if "__exp" in func_name:
+            return "exp"
+        if "__sinf" in func_name:
+            return "sin"
+        if "__sin" in func_name:
+            return "sin"
+        if "__cosf" in func_name:
+            return "cos"
+        if "__cos" in func_name:
+            return "cos"
+        if "__logf" in func_name:
+            return "log"
+        if "__log" in func_name:
+            return "log"
+        if "__powf" in func_name:
+            return "pow"
+        if "__pow" in func_name:
+            return "pow"
+        # fallback
+        return func_name.strip("_")
+
+    # --------------------------------------------------------------------------
+    # GENERIC / DEFAULT
+    # --------------------------------------------------------------------------
+    def _translate_generic_node(self, node: CUDANode, indent: int) -> str:
+        """
+        Default fallback if no specialized translator is found.
+        Could produce a comment or attempt to translate children.
+        """
+        pad = "  " * indent
+        lines = []
+        lines.append(f"{pad}// [Generic Node: {type(node).__name__}]")
+        for child in node.children:
+            lines.append(self._translate_node(child, indent=indent+1))
+        return "\n".join(lines)
+
+    # --------------------------------------------------------------------------
+    # UTILITY / TYPE MAPPING
+    # --------------------------------------------------------------------------
+    def _cuda_type_to_metal(self, cuda_type: CUDAType) -> str:
+        """
+        Map from your CUDAType enum to an MSL type string.
+        Extend or refine as needed for vector types, half, etc.
+        """
+        # Quick map (not exhaustive):
+        mapping = {
+            CUDAType.VOID: "void",
+            CUDAType.INT: "int",
+            CUDAType.UINT: "uint",
+            CUDAType.FLOAT: "float",
+            CUDAType.DOUBLE: "double",
+            CUDAType.CHAR: "char",
+            CUDAType.USHORT: "ushort",
+            # etc.
+        }
+        return mapping.get(cuda_type, "float")  # fallback
+
+
+Class: ('KernelTranslator', '')
+--------------------------------------------------------------------------------
+  Method: get("threads_per_threadgroup", (256, 1, 1)
+  Method: get(cuda_type, "float")
+
+
+--------------------------------------------------------------------------------
+
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\examples\simple_vector_add\vector_add.py
 
 from pathlib import Path
@@ -2427,7 +2792,9 @@ from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
 from ..utils.metal_equivalents import get_metal_equivalent
 from ..utils.mapping_tables import MetalMappingRegistry
-from ..parser.ast_nodes import CUDAKernel, CUDANode
+from ..core.parser.ast_nodes import (
+    CUDAKernel, CUDANode, CUDAType, CUDAQualifier
+)
 
 logger = get_logger(__name__)
 
@@ -3511,558 +3878,6 @@ File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\generator\__init__.py
 
 --------------------------------------------------------------------------------
 
-File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\gui\main.py
-
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QSplitter,
-                             QTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog,
-                             QTreeView, QLabel, QProgressBar, QStatusBar, QMenuBar, QMenu)
-from PyQt6.QtGui import QAction, QFont, QFontMetrics, QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
-import sys
-import os
-from pathlib import Path
-from typing import Optional, Dict, Any
-
-from translator import CudaTranslator
-from optimizer import MetalOptimizer
-from utils.logger import get_logger
-
-logger = get_logger(__name__)
-
-class TranslationWorker(QThread):
-    """Handles asynchronous CUDA to Metal translation."""
-    finished = pyqtSignal(dict)
-    progress = pyqtSignal(int)
-    error = pyqtSignal(str)
-
-    def __init__(self, cuda_code: str, optimization_level: int):
-        super().__init__()
-        self.cuda_code = cuda_code
-        self.optimization_level = optimization_level
-        self.translator = CudaTranslator()
-        self.optimizer = MetalOptimizer()
-
-    def run(self):
-        try:
-            # Translation process with progress updates
-            self.progress.emit(20)
-            ast = self.translator.parse_cuda(self.cuda_code)
-
-            self.progress.emit(40)
-            metal_code = self.translator.translate_to_metal(ast)
-
-            self.progress.emit(60)
-            optimized_code = self.optimizer.optimize_metal_code(
-                metal_code,
-                self.optimization_level
-            )
-
-            self.progress.emit(80)
-            performance_metrics = self.optimizer.analyze_performance(optimized_code)
-
-            self.progress.emit(100)
-            self.finished.emit({
-                'metal_code': optimized_code,
-                'metrics': performance_metrics
-            })
-        except Exception as e:
-            logger.error(f"Translation error: {str(e)}")
-            self.error.emit(str(e))
-
-class CUDAMMainWindow(QMainWindow):
-    """Main window for the CUDAM GUI application."""
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("CUDAM - CUDA to Metal Translator")
-        self.setMinimumSize(1200, 800)
-        self.current_file: Optional[Path] = None
-        self.translation_worker: Optional[TranslationWorker] = None
-
-        self._setup_ui()
-        self._setup_menubar()
-        self._setup_statusbar()
-        self._setup_shortcuts()
-        self._apply_styles()
-
-    def _setup_ui(self):
-        """Initialize the main UI components."""
-        # Main layout
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
-        layout = QVBoxLayout(main_widget)
-
-        # Create main splitter
-        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
-        layout.addWidget(self.main_splitter)
-
-        # Project explorer
-        self.project_tree = QTreeView()
-        self.project_model = QStandardItemModel()
-        self.project_tree.setModel(self.project_model)
-        self.project_tree.setHeaderHidden(True)
-        self.main_splitter.addWidget(self.project_tree)
-
-        # Editor section
-        editor_widget = QWidget()
-        editor_layout = QVBoxLayout(editor_widget)
-
-        # Editor tabs
-        self.editor_tabs = QTabWidget()
-        self.cuda_editor = QTextEdit()
-        self.metal_editor = QTextEdit()
-        self.cuda_editor.setFont(QFont("SF Mono", 12))
-        self.metal_editor.setFont(QFont("SF Mono", 12))
-
-        self.editor_tabs.addTab(self.cuda_editor, "CUDA Source")
-        self.editor_tabs.addTab(self.metal_editor, "Metal Output")
-        editor_layout.addWidget(self.editor_tabs)
-
-        # Control panel
-        control_panel = QWidget()
-        control_layout = QHBoxLayout(control_panel)
-
-        self.translate_button = QPushButton("Translate")
-        self.translate_button.clicked.connect(self.start_translation)
-        self.optimize_button = QPushButton("Optimize")
-        self.optimize_button.clicked.connect(self.optimize_code)
-
-        control_layout.addWidget(self.translate_button)
-        control_layout.addWidget(self.optimize_button)
-        editor_layout.addWidget(control_panel)
-
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        editor_layout.addWidget(self.progress_bar)
-
-        self.main_splitter.addWidget(editor_widget)
-
-        # Performance metrics panel
-        metrics_widget = QWidget()
-        metrics_layout = QVBoxLayout(metrics_widget)
-        metrics_layout.addWidget(QLabel("Performance Metrics"))
-        self.metrics_view = QTextEdit()
-        self.metrics_view.setReadOnly(True)
-        metrics_layout.addWidget(self.metrics_view)
-
-        self.main_splitter.addWidget(metrics_widget)
-
-        # Set splitter proportions
-        self.main_splitter.setStretchFactor(0, 1)  # Project tree
-        self.main_splitter.setStretchFactor(1, 3)  # Editor
-        self.main_splitter.setStretchFactor(2, 1)  # Metrics
-
-    def _setup_menubar(self):
-        """Setup the application menu bar."""
-        menubar = self.menuBar()
-
-        # File menu
-        file_menu = menubar.addMenu("File")
-
-        new_action = QAction("New", self)
-        new_action.setShortcut("Cmd+N")
-        new_action.triggered.connect(self.new_file)
-
-        open_action = QAction("Open...", self)
-        open_action.setShortcut("Cmd+O")
-        open_action.triggered.connect(self.open_file)
-
-        save_action = QAction("Save", self)
-        save_action.setShortcut("Cmd+S")
-        save_action.triggered.connect(self.save_file)
-
-        file_menu.addAction(new_action)
-        file_menu.addAction(open_action)
-        file_menu.addAction(save_action)
-
-        # Edit menu
-        edit_menu = menubar.addMenu("Edit")
-
-        undo_action = QAction("Undo", self)
-        undo_action.setShortcut("Cmd+Z")
-        undo_action.triggered.connect(self.cuda_editor.undo)
-
-        redo_action = QAction("Redo", self)
-        redo_action.setShortcut("Cmd+Shift+Z")
-        redo_action.triggered.connect(self.cuda_editor.redo)
-
-        edit_menu.addAction(undo_action)
-        edit_menu.addAction(redo_action)
-
-        # Translation menu
-        translation_menu = menubar.addMenu("Translation")
-
-        translate_action = QAction("Translate", self)
-        translate_action.setShortcut("Cmd+T")
-        translate_action.triggered.connect(self.start_translation)
-
-        optimize_action = QAction("Optimize", self)
-        optimize_action.setShortcut("Cmd+Shift+O")
-        optimize_action.triggered.connect(self.optimize_code)
-
-        translation_menu.addAction(translate_action)
-        translation_menu.addAction(optimize_action)
-
-    def _setup_statusbar(self):
-        """Setup the status bar."""
-        self.statusbar = QStatusBar()
-        self.setStatusBar(self.statusbar)
-
-    def _setup_shortcuts(self):
-        """Setup additional keyboard shortcuts."""
-        # Implementation of keyboard shortcuts
-        pass
-
-    def _apply_styles(self):
-        """Apply macOS-style CSS styling."""
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #ffffff;
-            }
-            QTextEdit {
-                border: 1px solid #cccccc;
-                border-radius: 4px;
-                background-color: #ffffff;
-                selection-background-color: #b2d7ff;
-            }
-            QPushButton {
-                background-color: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #0052cc;
-            }
-            QPushButton:pressed {
-                background-color: #004099;
-            }
-            QProgressBar {
-                border: 1px solid #cccccc;
-                border-radius: 4px;
-                text-align: center;
-            }
-            QProgressBar::chunk {
-                background-color: #0066cc;
-                border-radius: 3px;
-            }
-        """)
-
-    def start_translation(self):
-        """Start the CUDA to Metal translation process."""
-        cuda_code = self.cuda_editor.toPlainText()
-        if not cuda_code.strip():
-            self.statusbar.showMessage("No CUDA code to translate", 3000)
-            return
-
-        self.translate_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-
-        self.translation_worker = TranslationWorker(cuda_code, optimization_level=2)
-        self.translation_worker.finished.connect(self._handle_translation_finished)
-        self.translation_worker.progress.connect(self.progress_bar.setValue)
-        self.translation_worker.error.connect(self._handle_translation_error)
-        self.translation_worker.start()
-
-    def _handle_translation_finished(self, result: Dict[str, Any]):
-        """Handle completed translation."""
-        self.metal_editor.setPlainText(result['metal_code'])
-        self.metrics_view.setPlainText(
-            "Performance Metrics:\n" +
-            "\n".join(f"{k}: {v}" for k, v in result['metrics'].items())
-        )
-
-        self.translate_button.setEnabled(True)
-        self.progress_bar.setVisible(False)
-        self.statusbar.showMessage("Translation completed successfully", 3000)
-
-    def _handle_translation_error(self, error_msg: str):
-        """Handle translation errors."""
-        self.statusbar.showMessage(f"Error: {error_msg}", 5000)
-        self.translate_button.setEnabled(True)
-        self.progress_bar.setVisible(False)
-
-    def optimize_code(self):
-        """Optimize the generated Metal code."""
-        metal_code = self.metal_editor.toPlainText()
-        if not metal_code.strip():
-            self.statusbar.showMessage("No Metal code to optimize", 3000)
-            return
-
-        try:
-            optimizer = MetalOptimizer()
-            optimized_code = optimizer.optimize_metal_code(metal_code, optimization_level=3)
-            self.metal_editor.setPlainText(optimized_code)
-            self.statusbar.showMessage("Optimization completed", 3000)
-        except Exception as e:
-            self.statusbar.showMessage(f"Optimization error: {str(e)}", 5000)
-
-    def new_file(self):
-        """Create a new file."""
-        self.current_file = None
-        self.cuda_editor.clear()
-        self.metal_editor.clear()
-        self.statusbar.showMessage("New file created", 3000)
-
-    def open_file(self):
-        """Open a CUDA source file."""
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open CUDA File",
-            "",
-            "CUDA Files (*.cu *.cuh);;All Files (*.*)"
-        )
-
-        if filename:
-            try:
-                with open(filename, 'r') as f:
-                    self.cuda_editor.setPlainText(f.read())
-                self.current_file = Path(filename)
-                self.statusbar.showMessage(f"Opened {filename}", 3000)
-            except Exception as e:
-                self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
-
-    def save_file(self):
-        """Save the current file."""
-        if not self.current_file:
-            filename, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save CUDA File",
-                "",
-                "CUDA Files (*.cu);;Metal Files (*.metal);;All Files (*.*)"
-            )
-            if not filename:
-                return
-            self.current_file = Path(filename)
-
-        try:
-            with open(self.current_file, 'w') as f:
-                if self.current_file.suffix == '.cu':
-                    f.write(self.cuda_editor.toPlainText())
-                elif self.current_file.suffix == '.metal':
-                    f.write(self.metal_editor.toPlainText())
-            self.statusbar.showMessage(f"Saved {self.current_file}", 3000)
-        except Exception as e:
-            self.statusbar.showMessage(f"Error saving file: {str(e)}", 5000)
-
-def main():
-    """Main entry point for the CUDAM GUI application."""
-    app = QApplication(sys.argv)
-
-    # Set application-wide attributes
-    app.setApplicationName("CUDAM")
-    app.setApplicationVersion("1.0.0")
-    app.setOrganizationName("CUDAM")
-    app.setOrganizationDomain("cudam.dev")
-
-    window = CUDAMMainWindow()
-    window.show()
-
-    sys.exit(app.exec())
-
-if __name__ == '__main__':
-    main()
-Class: ('TranslationWorker', '(QThread)')
---------------------------------------------------------------------------------
-  Method: get()
-  Method: get(main_widget)
-  Method: get(self.main_splitter)
-  Method: get(self.project_tree)
-  Method: get()
-  Method: get()
-  Method: get(self.editor_tabs)
-  Method: get()
-  Method: get(self.translate_button)
-  Method: get(self.optimize_button)
-  Method: get(control_panel)
-  Method: get(self.progress_bar)
-  Method: get(editor_widget)
-  Method: get()
-  Method: get(QLabel("Performance Metrics")
-  Method: get(self.metrics_view)
-  Method: get(metrics_widget)
-
-Class: ('CUDAMMainWindow', '(QMainWindow)')
---------------------------------------------------------------------------------
-  Method: get()
-  Method: get(main_widget)
-  Method: get(self.main_splitter)
-  Method: get(self.project_tree)
-  Method: get()
-  Method: get()
-  Method: get(self.editor_tabs)
-  Method: get()
-  Method: get(self.translate_button)
-  Method: get(self.optimize_button)
-  Method: get(control_panel)
-  Method: get(self.progress_bar)
-  Method: get(editor_widget)
-  Method: get()
-  Method: get(QLabel("Performance Metrics")
-  Method: get(self.metrics_view)
-  Method: get(metrics_widget)
-
-
---------------------------------------------------------------------------------
-
-File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\gui\__init__.py
-
-# CUDAM/gui/__init__.py
-
-"""
-CUDAM GUI Module
-Production-ready graphical interface for CUDA to Metal translation.
-"""
-
-import os
-import sys
-from pathlib import Path
-
-# Add CUDAM root to Python path
-CUDAM_ROOT = Path(__file__).parent.parent
-if str(CUDAM_ROOT) not in sys.path:
-    sys.path.append(str(CUDAM_ROOT))
-
-# Core CUDAM components
-from ..translator.host_adapter import HostAdapter
-from ..translator.kernel_translator import KernelTranslator
-from ..translator.cudnn_mapper import CudnnMapper
-from ..translator.thread_hierarchy_mapper import ThreadHierarchyMapper
-
-# Optimization components
-from ..optimizer.unified_optimizer_metal import UnifiedMetalOptimizer
-from ..optimization.memory_optimizer import MemoryOptimizer
-from ..optimization.kernel_optimizer import KernelOptimizer
-from ..optimization.barrier_optimizer import BarrierOptimizer
-
-# Parser components
-from ..parser.cuda_parser import CudaParser
-from ..parser.cuda_syntax_validator import CudaSyntaxValidator
-from ..parser.ast_nodes import (
-    CUDANode, CUDAKernel, CUDAParameter, CUDAType, CUDAQualifier,
-    CUDASharedMemory, CUDAThreadIdx, CUDABarrier
-)
-
-# Utility components
-from ..utils.error_handler import (
-    CudaError, CudaParseError, CudaTranslationError,
-    CudaTypeError, CudaNotSupportedError
-)
-from ..utils.logger import get_logger
-from ..utils.metal_equivalents import get_metal_equivalent
-from ..utils.mapping_tables import MetalMappingRegistry
-
-# Initialize logger
-logger = get_logger(__name__)
-
-class CudaTranslator:
-    """
-    Unified CUDA to Metal translation interface.
-    Provides high-level access to translation functionality.
-    """
-
-    def __init__(self):
-        self.parser = CudaParser()
-        self.validator = CudaSyntaxValidator()
-        self.kernel_translator = KernelTranslator()
-        self.host_adapter = HostAdapter(self.kernel_translator, None)  # Initialize properly
-        self.optimizer = UnifiedMetalOptimizer()
-        self.mapping_registry = MetalMappingRegistry()
-
-    def parse_cuda(self, cuda_code: str) -> CUDANode:
-        """Parse CUDA code into AST."""
-        try:
-            return self.parser.parse_string(cuda_code)
-        except CudaParseError as e:
-            logger.error(f"Parsing error: {e}")
-            raise
-
-    def translate_to_metal(self, ast: CUDANode) -> str:
-        """Translate CUDA AST to Metal code."""
-        try:
-            # Validate AST
-            validation_result = self.validator.validate_ast(ast)
-            if not validation_result[0]:
-                raise CudaTranslationError(f"Validation failed: {validation_result[1]}")
-
-            # Translate kernels
-            metal_code = self.kernel_translator.translate_kernel(ast)
-
-            # Adapt host code
-            metal_code = self.host_adapter.translate_host_code(metal_code)
-
-            return metal_code
-
-        except Exception as e:
-            logger.error(f"Translation error: {e}")
-            raise CudaTranslationError(str(e))
-
-    def optimize_metal_code(self, metal_code: str, optimization_level: int = 2) -> str:
-        """Optimize generated Metal code."""
-        try:
-            return self.optimizer.optimize(metal_code, optimization_level)
-        except Exception as e:
-            logger.error(f"Optimization error: {e}")
-            raise
-
-# GUI-specific components
-from .main import CUDAMMainWindow
-from .widgets.editor import CodeEditor
-from .widgets.project import ProjectExplorer
-from .widgets.metrics import PerformanceMetrics
-
-# Version information
-__version__ = "1.0.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
-
-# Default configuration
-DEFAULT_CONFIG = {
-    'theme': 'light',
-    'font_size': 12,
-    'tab_size': 4,
-    'auto_indent': True,
-    'show_line_numbers': True,
-    'highlight_current_line': True,
-    'optimization_level': 2,
-}
-
-def initialize_gui():
-    """Initialize GUI components and resources."""
-    # Set up resource paths
-    resource_path = Path(__file__).parent / 'resources'
-    os.environ['CUDAM_RESOURCE_PATH'] = str(resource_path)
-
-    # Initialize logging
-    logger.info("Initializing CUDAM GUI")
-
-    # Return initialized components
-    return {
-        'main_window': CUDAMMainWindow,
-        'translator': CudaTranslator(),
-        'config': DEFAULT_CONFIG
-    }
-
-# Expose public interface
-__all__ = [
-    'CUDAMMainWindow',
-    'CudaTranslator',
-    'initialize_gui',
-    'CodeEditor',
-    'ProjectExplorer',
-    'PerformanceMetrics',
-    '__version__',
-]
-Class: ('CudaTranslator', '')
---------------------------------------------------------------------------------
-
-
---------------------------------------------------------------------------------
-
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\native\metal_interop.h
 
 import Metal
@@ -4844,7 +4659,9 @@ from threading import Lock
 
 from ..utils.error_handler import CudaTranslationError
 from ..utils.logger import get_logger
-from ..parser.ast_nodes import CUDANode, CUDAKernel, CUDAThreadIdx, CUDABlockIdx
+from ..core.parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAThreadIdx, CUDABlockIdx
+)
 from ..utils.metal_math_functions import MetalMathFunction
 from ..utils.cuda_to_metal_type_mapping import map_cuda_type_to_metal
 
@@ -5583,64 +5400,52 @@ Class: ('CudaASTNode', '')
 File: C:\Users\PC\Desktop\Megie\CUDAM\CUDAM\parser\cuda_parser.py
 
 """
-Enterprise-Grade CUDA to Metal Parser
-Copyright (c) 2024 - Production Implementation
-Author: High-Performance Computing Division
-
-This implementation provides a comprehensive, thread-safe CUDA parser
-with complete Metal translation capabilities and advanced optimization strategies.
-
-Key Features:
-- Thread-safe parsing and caching
-- Comprehensive error handling
-- Advanced Metal translation
-- Full AST optimization
-- Real-time performance monitoring
+imports are a hell of a drug
 """
 import time
 import os
-import re
+
 import sys
-import json
-import uuid
-import logging
+
 import platform
-import hashlib
-import tempfile
+
 import subprocess
-from enum import Enum
-from typing import (
-    Dict, List, Set, Any, Optional, Union, Tuple,
-    Callable, Generator, TypeVar, Generic
-)
-from pathlib import Path
+
+
+
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock, RLock
 
 import clang
 import clang.cindex
-from clang.cindex import (
-    CursorKind, TypeKind, TranslationUnit, Index,
-    AccessSpecifier, TokenKind, SourceLocation, SourceRange
+
+
+# Critical imports for CUDA Parser
+from typing import Dict, List, Set, Optional, Union, Tuple, Any
+from pathlib import Path
+import logging
+import clang.cindex
+from clang.cindex import Index, TranslationUnit, Cursor, CursorKind, TypeKind
+from ..core.parser.ast_nodes import (
+    CUDANode, CUDAKernel, CUDAParameter, CUDASharedMemory, CUDAType,
+    CUDAExpressionNode, CUDAStatement, VariableNode, CUDAQualifier,
+    CUDANodeType, CUDAThreadIdx, CUDABlockIdx, CUDAKernel as KernelNode,
+    FunctionNode
 )
 
-# Custom imports (assuming project structure)
-from ..ast import (
-    CUDANode, KernelNode, FunctionNode, VariableNode,
-    CompoundStmtNode, ExpressionNode, StatementNode,
+# Internal project imports
+from ..core.parser.ast_nodes import (
+    ExpressionNode, StatementNode,
     ThreadHierarchyNode, MemoryModelNode, CUDAType,
-    CUDAQualifier, MetalEquivalent, OptimizationNode
+    CUDAQualifier, OptimizationNode
 )
 from ..utils.error_handler import (
     CudaError, CudaParseError, CudaTranslationError,
-    CudaTypeError, CudaNotSupportedError, MetalCompilationError
+    CudaTypeError, CudaNotSupportedError
 )
 from ..utils.logger import get_logger
-from ..utils.metal_equivalents import METAL_EQUIVALENTS
-from ..utils.mapping_tables import MetalMappingRegistry
-from ..optimization.metal_optimizer import MetalOptimizer
-from ..validation.cuda_validator import CUDAValidator
+
 
 # Initialize logger
 logger = get_logger(__name__)
